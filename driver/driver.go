@@ -5,7 +5,12 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc"
+)
+
+const (
+	driverName    = "io.daterainc.csi.dsp"
+	vendorVersion = "0.1.0"
 )
 
 // Driver is a single-binary implementation of:
@@ -15,7 +20,8 @@ import (
 type Driver struct {
 	gs *grpc.Server
 	// dc *datera.Client
-	dc struct{}
+	dc  struct{}
+	nid string
 
 	Sock     string
 	Url      string
@@ -24,7 +30,7 @@ type Driver struct {
 }
 
 func NewDateraDriver(sock, username, password, url string) (*Driver, error) {
-	return Driver{
+	return &Driver{
 		Sock:     sock,
 		Username: username,
 		Password: password,
@@ -34,7 +40,7 @@ func NewDateraDriver(sock, username, password, url string) (*Driver, error) {
 
 func (d *Driver) Run() error {
 	errf := func(ctxt context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		resp, err := handler(ctx, req)
+		resp, err := handler(ctxt, req)
 		if err != nil {
 			log.WithError(err).WithField("method", info.FullMethod).Error("method failed")
 		}
