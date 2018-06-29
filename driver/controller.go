@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
@@ -12,13 +13,76 @@ type MockVolume struct {
 	Size int64
 }
 
+type VolMetadata map[string]string
+
+func handleVolParams(params map[string]string) {
+}
+
+func handleVolSecrets(secrets map[string]string) {
+}
+
+func handleSnap(id string) {
+}
+
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	log.WithField("method", "create_volume").Info("Controller server 'CreateVolume' called")
-	vol := MockVolume{}
+	logp := log.WithField("method", "create_volume")
+	logp.Info("Controller server 'CreateVolume' called")
+	logp.Debugf("CreateVolumeRequest: %+v", *req)
+
+	md := make(VolMetadata)
+
+	// Handle req.Name
+	var volName string
+	if req.Name != "" {
+		volName = req.Name
+	} else {
+		volName = genVolName()
+	}
+
+	// Handle req.CapacityRange
+	cr := req.CapacityRange
+	if cr.RequiredBytes >= cr.LimitBytes {
+		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
+	}
+
+	// Handle req.VolumeCapabilities
+	vcs := req.VolumeCapabilities
+	for i, vc := range vcs {
+		s := string(i)
+		var at string
+		switch vc.GetAccessType().(type) {
+		case *csi.VolumeCapability_Block:
+			at = "block"
+		case *csi.VolumeCapability_Mount:
+			at = "mount"
+		default:
+			at = ""
+		}
+		md["access-type-"+s] = at
+		md["access-mode-"+s] = string(vc.GetAccessMode().Mode)
+	}
+
+	// Handle req.Parameters
+	handleVolParams(req.Parameters)
+
+	// Handle req.ControllerCreateSecrets
+	handleVolSecrets(req.ControllerCreateSecrets)
+
+	// Handle req.VolumeContentSource
+	cs := req.VolumeContentSource
+	if snap := cs.GetSnapshot(); snap != nil {
+		handleSnap(snap.Id)
+	}
+
+	// Handle req.AccessibilityRequirements
+
+	vol := MockVolume{Id: volName}
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id:            vol.Id,
 			CapacityBytes: vol.Size,
+			Id:            vol.Id,
+			Attributes:    map[string]string{},
+			ContentSource: nil,
 		},
 	}, nil
 }
@@ -28,7 +92,9 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 }
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	return &csi.ControllerPublishVolumeResponse{}, nil
+	return &csi.ControllerPublishVolumeResponse{
+		PublishInfo: map[string]string{},
+	}, nil
 }
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
@@ -38,6 +104,7 @@ func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Supported: true,
+		Message:   "",
 	}, nil
 }
 
