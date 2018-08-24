@@ -6,6 +6,8 @@ import (
 
 	driver "github.com/Datera/datera-csi/driver"
 	log "github.com/sirupsen/logrus"
+
+	udc "github.com/Datera/go-udc/pkg/udc"
 )
 
 const (
@@ -14,9 +16,6 @@ const (
 
 var (
 	endpoint = flag.String("endpoint", "unix:///var/lib/kubelet/plugins/io.datera.csi.dsp/csi.sock", "CSI endpoint")
-	username = flag.String("username", "", "Datera Account Username")
-	password = flag.String("password", "", "Datera Account Password")
-	url      = flag.String("url", "", "Datera API URL (including port)")
 )
 
 func Usage() {
@@ -26,10 +25,13 @@ func Usage() {
 func Main() int {
 	flag.Parse()
 
-	if *username == "" || *password == "" || *url == "" {
-		Usage()
+	conf, err := udc.GetConfig()
+	if err != nil {
+		log.Fatal(err)
 	}
-	driver, err := driver.NewDateraDriver(*endpoint, *username, *password, *url)
+	log.Info("Using Universal Datera Config")
+	udc.PrintConfig()
+	driver, err := driver.NewDateraDriver(*endpoint, conf)
 	if err != nil {
 		log.Fatal(err)
 	}

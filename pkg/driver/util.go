@@ -2,7 +2,9 @@ package driver
 
 import (
 	"context"
+	"strings"
 
+	uuid "github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	grpc "google.golang.org/grpc"
 )
@@ -13,8 +15,11 @@ func waitForAttach() {
 func waitForOnline() {
 }
 
-func genVolName() string {
-	return "vol-name"
+func genVolName(name string) string {
+	if name == "" {
+		name = uuid.Must(uuid.NewRandom()).String()
+	}
+	return strings.Join([]string{"CSI", name}, "-")
 }
 
 func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {

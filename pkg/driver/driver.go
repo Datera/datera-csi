@@ -4,6 +4,10 @@ import (
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
 	grpc "google.golang.org/grpc"
+
+	udc "github.com/Datera/go-udc/pkg/udc"
+
+	client "github.com/Datera/datera-csi/pkg/client"
 )
 
 const (
@@ -16,31 +20,34 @@ const (
 //   * csi.IdentityServer
 //   * csi.NodeServer
 type Driver struct {
-	gs *grpc.Server
-	// dc *datera.Client
-	dc  struct{}
+	gs  *grpc.Server
+	dc  *client.DateraClient
 	nid string
 
-	Sock     string
-	Url      string
-	Username string
-	Password string
+	Sock string
 }
 
-func NewDateraDriver(sock, username, password, url string) (*Driver, error) {
+func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
+	client, err := client.NewDateraClient(udc)
+	if err != nil {
+		return nil, err
+	}
 	return &Driver{
-		Sock:     sock,
-		Username: username,
-		Password: password,
-		Url:      url,
+		dc:   client,
+		Sock: sock,
 	}, nil
 }
 
 func (d *Driver) Run() error {
-	log.WithField("method", "driver.Run").Infof("Starting CSI driver")
+	log.WithField("method", "driver.Run").Infof("Starting CSI driver\n")
 	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServer))
 	csi.RegisterControllerServer(d.gs, d)
 	csi.RegisterIdentityServer(d.gs, d)
 	csi.RegisterNodeServer(d.gs, d)
 	return nil
+}
+
+func (d *Driver) Stop() {
+	log.Info("Datera CSI driver stopped")
+	d.gs.Stop()
 }
