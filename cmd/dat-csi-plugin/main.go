@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	driver "github.com/Datera/datera-csi/driver"
+	driver "github.com/Datera/datera-csi/pkg/driver"
 	log "github.com/sirupsen/logrus"
 
 	udc "github.com/Datera/go-udc/pkg/udc"

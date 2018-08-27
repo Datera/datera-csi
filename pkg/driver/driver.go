@@ -1,13 +1,14 @@
 package driver
 
 import (
+	"context"
+
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
 	grpc "google.golang.org/grpc"
 
-	udc "github.com/Datera/go-udc/pkg/udc"
-
 	client "github.com/Datera/datera-csi/pkg/client"
+	udc "github.com/Datera/go-udc/pkg/udc"
 )
 
 const (
@@ -50,4 +51,14 @@ func (d *Driver) Run() error {
 func (d *Driver) Stop() {
 	log.Info("Datera CSI driver stopped")
 	d.gs.Stop()
+}
+
+func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	log.WithField("method", info.FullMethod).Infof("GRPC -- request: %+v", req)
+	resp, err := handler(ctx, req)
+	log.WithField("method", info.FullMethod).Infof("GRPC -- response: %+v", resp)
+	if err != nil {
+		log.WithField("method", info.FullMethod).Infof("GRPC -- error: %+v", err)
+	}
+	return resp, err
 }

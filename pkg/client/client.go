@@ -1,15 +1,16 @@
 package client
 
 import (
-	sdk "github.com/Datera/go-sdk/pkg/sdk"
+	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	udc "github.com/Datera/go-udc/pkg/udc"
 )
 
 type DateraClient struct {
-	sdk *sdk.SDK
+	sdk *dsdk.SDK
+	udc *udc.UDC
 }
 
-func NewDateraClient(udc *udc.UDC) *DateraClient {
+func NewDateraClient(udc *udc.UDC) (*DateraClient, error) {
 	sdk, err := dsdk.NewSDK(udc, true)
 	if err != nil {
 		return nil, err
@@ -17,5 +18,8 @@ func NewDateraClient(udc *udc.UDC) *DateraClient {
 	if err = sdk.HealthCheck(); err != nil {
 		return nil, err
 	}
-	return &DateraClient{}
+	return &DateraClient{
+		sdk: sdk,
+		udc: udc,
+	}, nil
 }

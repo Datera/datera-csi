@@ -8,6 +8,8 @@ import (
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	units "github.com/docker/go-units"
 	log "github.com/sirupsen/logrus"
+
+	co "github.com/Datera/datera-csi/pkg/common"
 )
 
 type VolMetadata map[string]string
@@ -48,7 +50,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	md := make(VolMetadata)
 
 	// Handle req.Name
-	id := genVolName(req.Name)
+	id := co.GenVolName(req.Name)
 
 	// Handle req.CapacityRange
 	cr := req.CapacityRange
