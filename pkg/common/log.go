@@ -9,7 +9,6 @@ import (
 
 	uuid "github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-	grpc "google.golang.org/grpc"
 )
 
 const (
@@ -141,25 +140,15 @@ func Fatalf(ctxt context.Context, s string, args ...interface{}) {
 	}).Fatalf(s, args...)
 }
 
-func GenVolName(name string) string {
+func GenName(name string) string {
 	if name == "" {
-		name = uuid.Must(uuid.NewRandom()).String()
+		name = GenId()
 	}
 	return strings.Join([]string{"CSI", name}, "-")
 }
 
 func GenId() string {
 	return uuid.Must(uuid.NewRandom()).String()
-}
-
-func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	log.WithField("method", info.FullMethod).Infof("GRPC -- request: %+v", req)
-	resp, err := handler(ctx, req)
-	log.WithField("method", info.FullMethod).Infof("GRPC -- response: %+v", resp)
-	if err != nil {
-		log.WithField("method", info.FullMethod).Infof("GRPC -- error: %+v", err)
-	}
-	return resp, err
 }
 
 // Hack just to make sure I don't miss these

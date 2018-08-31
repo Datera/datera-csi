@@ -50,7 +50,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	md := make(VolMetadata)
 
 	// Handle req.Name
-	id := co.GenVolName(req.Name)
+	id := co.GenName(req.Name)
 
 	// Handle req.CapacityRange
 	cr := req.CapacityRange

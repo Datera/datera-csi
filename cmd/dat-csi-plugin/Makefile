@@ -7,10 +7,18 @@ compile:
 	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ${NAME}
 	@env go vet ./...
 
-compile-local:
+local:
 	@echo "==> Building the Datera CSI Driver"
 	@env CGO_ENABLED=0 GOARCH=amd64 go build -o ${NAME}
 	@env go vet ./...
+
+test:
+	@echo "==> Testing the Datera CSI Driver"
+	@env go test ../../pkg/client ../../pkg/driver
+
+testv:
+	@echo "==> Testing the Datera CSI Driver"
+	@env go test -v ../../pkg/client ../../pkg/driver
 
 clean:
 	@echo "==> Cleaning artifacts"
