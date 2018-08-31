@@ -1,13 +1,16 @@
 package client
 
 import (
+	"context"
+
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	udc "github.com/Datera/go-udc/pkg/udc"
 )
 
 type DateraClient struct {
-	sdk *dsdk.SDK
-	udc *udc.UDC
+	sdk  *dsdk.SDK
+	udc  *udc.UDC
+	ctxt context.Context
 }
 
 func NewDateraClient(udc *udc.UDC) (*DateraClient, error) {
@@ -22,4 +25,9 @@ func NewDateraClient(udc *udc.UDC) (*DateraClient, error) {
 		sdk: sdk,
 		udc: udc,
 	}, nil
+}
+
+func (r *DateraClient) NewContext(params *map[string]string) context.Context {
+	r.ctxt = r.sdk.Context(params)
+	return r.ctxt
 }
