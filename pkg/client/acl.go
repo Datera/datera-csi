@@ -30,22 +30,22 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 		return nil, err
 	}
 	co.Debugf(ctxt, "CreateGetInitiator invoked for %s", iqn)
-	init, err := r.sdk.Initiators.Get(&dsdk.InitiatorsGetRequest{
+	init, apierr, err := r.sdk.Initiators.Get(&dsdk.InitiatorsGetRequest{
 		Ctxt: ctxt,
 		Id:   iqn,
 	})
 	if err != nil {
-		if !strings.Contains(err.Error(), "not found") {
+		if apierr.Name != "NotFoundError" {
 			co.Error(ctxt, err)
 			return nil, err
 		}
-		init, err = r.sdk.Initiators.Create(&dsdk.InitiatorsCreateRequest{
+		init, apierr, err = r.sdk.Initiators.Create(&dsdk.InitiatorsCreateRequest{
 			Ctxt: ctxt,
 			Name: co.GenName(""),
 			Id:   iqn,
 		})
-		if err != nil {
-			co.Error(ctxt, err)
+		if err != nil || apierr != nil {
+			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 			return nil, err
 		}
 
@@ -65,16 +65,17 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 	}
 	// Update existing AclPolicy if it exists
 	si := r.Ai.StorageInstances[0]
-	acl, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{Ctxt: ctxt})
-	if err != nil {
-		co.Error(ctxt, err)
+	acl, apierr, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{Ctxt: ctxt})
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
 	acl.Initiators = append(acl.Initiators, myInit)
-	if _, err = acl.Set(&dsdk.AclPolicySetRequest{
+	if _, apierr, err = acl.Set(&dsdk.AclPolicySetRequest{
 		Ctxt:       ctxt,
 		Initiators: acl.Initiators,
-	}); err != nil {
+	}); err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
 	return nil

@@ -76,11 +76,11 @@ func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, er
 	}
 	var pp map[string]int
 	if qos {
-		resp, err := v.PerformancePolicy.Get(&dsdk.PerformancePolicyGetRequest{
+		resp, apierr, err := v.PerformancePolicy.Get(&dsdk.PerformancePolicyGetRequest{
 			Ctxt: ctxt,
 		})
-		if err != nil {
-			co.Error(ctxt, err)
+		if err != nil || apierr != nil {
+			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 			return nil, err
 		}
 		pp = map[string]int{
@@ -159,9 +159,9 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 			StorageInstances: []*dsdk.StorageInstance{si},
 		}
 	}
-	newAi, err := r.sdk.AppInstances.Create(&ai)
-	if err != nil {
-		co.Error(r.ctxt, err)
+	newAi, apierr, err := r.sdk.AppInstances.Create(&ai)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, err
 	}
 	v, err := r.AiToClientVol(newAi, false)
@@ -180,29 +180,29 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 func (r DateraClient) DeleteVolume(name string, force bool) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "DeleteVolume")
 	co.Debugf(ctxt, "DeleteVolume invoked for %s", name)
-	ai, err := r.sdk.AppInstances.Get(&dsdk.AppInstancesGetRequest{
+	ai, apierr, err := r.sdk.AppInstances.Get(&dsdk.AppInstancesGetRequest{
 		Ctxt: ctxt,
 		Id:   name,
 	})
-	if err != nil {
-		co.Error(ctxt, err)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
-	_, err = ai.Set(&dsdk.AppInstanceSetRequest{
+	_, apierr, err = ai.Set(&dsdk.AppInstanceSetRequest{
 		Ctxt:       ctxt,
 		AdminState: "offline",
 		Force:      force,
 	})
-	if err != nil {
-		co.Error(ctxt, err)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
-	_, err = ai.Delete(&dsdk.AppInstanceDeleteRequest{
+	_, apierr, err = ai.Delete(&dsdk.AppInstanceDeleteRequest{
 		Ctxt:  ctxt,
 		Force: force,
 	})
-	if err != nil {
-		co.Error(ctxt, err)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
 	return nil
@@ -211,9 +211,9 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 func (r DateraClient) ListVolumes() ([]*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListVolumes")
 	co.Debug(ctxt, "ListVolumes invoked")
-	resp, err := r.sdk.AppInstances.List(&dsdk.AppInstancesListRequest{Ctxt: ctxt})
-	if err != nil {
-		co.Error(ctxt, err)
+	resp, apierr, err := r.sdk.AppInstances.List(&dsdk.AppInstancesListRequest{Ctxt: ctxt})
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, err
 	}
 	vols := []*Volume{}
@@ -241,9 +241,9 @@ func (r *Volume) SetPerformancePolicy(volOpts *VolOpts) error {
 		WriteBandwidthMax: int(volOpts.WriteBandwidthMax),
 		TotalBandwidthMax: int(volOpts.TotalBandwidthMax),
 	}
-	resp, err := ai.StorageInstances[0].Volumes[0].PerformancePolicy.Create(&pp)
-	if err != nil {
-		co.Error(ctxt, err)
+	resp, apierr, err := ai.StorageInstances[0].Volumes[0].PerformancePolicy.Create(&pp)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
 	r.QoS = map[string]int{
@@ -266,11 +266,11 @@ func (r *Volume) SetPerformancePolicy(volOpts *VolOpts) error {
 func (r *Volume) GetMetadata() (*map[string]string, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetMetadata")
 	co.Debugf(ctxt, "GetMetadata invoked for %s", r.Name)
-	resp, err := r.Ai.GetMetadata(&dsdk.AppInstanceMetadataGetRequest{
+	resp, apierr, err := r.Ai.GetMetadata(&dsdk.AppInstanceMetadataGetRequest{
 		Ctxt: ctxt,
 	})
-	if err != nil {
-		co.Error(ctxt, err)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, err
 	}
 	result := map[string]string(*resp)
@@ -280,12 +280,12 @@ func (r *Volume) GetMetadata() (*map[string]string, error) {
 func (r *Volume) SetMetadata(metadata *map[string]string) (*map[string]string, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetMetadata")
 	co.Debugf(ctxt, "GetMetadata invoked for %s", r.Name)
-	resp, err := r.Ai.SetMetadata(&dsdk.AppInstanceMetadataSetRequest{
+	resp, apierr, err := r.Ai.SetMetadata(&dsdk.AppInstanceMetadataSetRequest{
 		Ctxt:     ctxt,
 		Metadata: *metadata,
 	})
-	if err != nil {
-		co.Error(ctxt, err)
+	if err != nil || apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, err
 	}
 	result := map[string]string(*resp)
