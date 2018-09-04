@@ -17,8 +17,13 @@ test:
 	@sudo env "PATH=${PATH}" go test ../../pkg/client ../../pkg/driver
 
 testv:
-	@echo "==> Testing the Datera CSI Driver"
+	@echo "==> Testing the Datera CSI Driver (verbose)"
 	@sudo env "PATH=${PATH}" go test -v ../../pkg/client ../../pkg/driver
+
+testc:
+	@echo "==> Testing the Datera CSI Driver (compile only)"
+	@env go test -run ^$ ../../pkg/client ../../pkg/driver
+
 
 clean:
 	@echo "==> Cleaning artifacts"

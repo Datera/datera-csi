@@ -24,6 +24,16 @@ func createVolume(t *testing.T, client *DateraClient, v *VolOpts) (string, *Volu
 
 }
 
+func createRegisterInitiator(t *testing.T, client *DateraClient, vol *Volume) {
+	init, err := client.CreateGetInitiator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = vol.RegisterAcl(init); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func getClient(t *testing.T) *DateraClient {
 	conf, err := udc.GetConfig()
 	if err != nil {
@@ -113,12 +123,23 @@ func TestACL(t *testing.T) {
 		WriteIopsMax: WIM,
 	}
 	_, vol, cleanf := createVolume(t, client, v)
+	createRegisterInitiator(t, client, vol)
 	defer cleanf()
-	init, err := client.CreateGetInitiator()
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestLogin(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
 	}
-	if err = vol.RegisterAcl(init); err != nil {
-		t.Fatal(err)
+	_, vol, cleanf := createVolume(t, client, v)
+	createRegisterInitiator(t, client, vol)
+	vol.Login(false)
+	if vol.DevicePath == "" {
+		t.Fatal("Device Path not populated")
 	}
+	t.Logf("Device Path: %s", vol.DevicePath)
+	defer cleanf()
 }
