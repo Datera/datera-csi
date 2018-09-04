@@ -2,6 +2,12 @@ package driver
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
@@ -25,7 +31,7 @@ type Driver struct {
 	dc  *client.DateraClient
 	nid string
 
-	Sock string
+	sock string
 }
 
 func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
@@ -35,17 +41,40 @@ func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
 	}
 	return &Driver{
 		dc:   client,
-		Sock: sock,
+		sock: sock,
 	}, nil
 }
 
 func (d *Driver) Run() error {
 	log.WithField("method", "driver.Run").Infof("Starting CSI driver\n")
+
+	u, err := url.Parse(d.sock)
+	if err != nil {
+		return err
+	}
+	if u.Scheme != "unix" {
+		return fmt.Errorf("Only unix sockets are supported by CSI")
+	}
+	addr := path.Join(u.Host, filepath.FromSlash(u.Path))
+	if u.Host == "" {
+		addr = filepath.FromSlash(u.Path)
+	}
+	log.Infof("Removing socket: %s\n", addr)
+	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
+		log.Errorf("Failed to remove unix domain socket file: %s", addr)
+		return err
+	}
+	listener, err := net.Listen(u.Scheme, addr)
+	if err != nil {
+		log.Errorf("Error starting listener for address: %s", addr)
+		return err
+	}
 	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServer))
 	csi.RegisterControllerServer(d.gs, d)
 	csi.RegisterIdentityServer(d.gs, d)
 	csi.RegisterNodeServer(d.gs, d)
-	return nil
+	log.Infof("Serving socket: %s\n", addr)
+	return d.gs.Serve(listener)
 }
 
 func (d *Driver) Stop() {

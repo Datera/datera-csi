@@ -52,3 +52,7 @@ func (d *Driver) NodeGetInfo(ctxt context.Context, req *csi.NodeGetInfoRequest) 
 		AccessibleTopology: nil,
 	}, nil
 }
+
+func (d *Driver) NodeGetVolumeStats(ctxt context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	return nil, nil
+}

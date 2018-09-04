@@ -42,10 +42,6 @@ func Main() int {
 	return 0
 }
 
-func init() {
-
-}
-
 func main() {
 	os.Exit(Main())
 }
