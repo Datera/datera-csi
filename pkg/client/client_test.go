@@ -78,7 +78,7 @@ func TestListVolumes(t *testing.T) {
 	}
 }
 
-func TestClientVolumeMetadata(t *testing.T) {
+func TestVolumeMetadata(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{
 		Size:         5,
@@ -102,5 +102,23 @@ func TestClientVolumeMetadata(t *testing.T) {
 	}
 	if !reflect.DeepEqual(&m, m3) {
 		t.Fatalf("metadata sent and metadata recieved are unequal: [%#v] != [%#v]\n", m, m3)
+	}
+}
+
+func TestACL(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanf := createVolume(t, client, v)
+	defer cleanf()
+	init, err := client.CreateGetInitiator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = vol.RegisterAcl(init); err != nil {
+		t.Fatal(err)
 	}
 }

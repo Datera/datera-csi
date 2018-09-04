@@ -13,65 +13,61 @@ var (
 	initiatorFile = "/etc/iscsi/initiatorname.iscsi"
 )
 
+type Initiator struct {
+	Name string
+	Path string
+	Iqn  string
+}
+
 // Gets an Initiator path based on IQN.  If that initiator does not exist it creates the Initiator
 // then returns the path to the newly created Initiator
-func (r DateraClient) CreateGetInitiator(ctxt context.Context) (string, error) {
+func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateGetInitiator")
+	co.Debugf(ctxt, "CreateGetInitiator invoked")
 	iqn, err := getClientIqn(ctxt)
 	if err != nil {
 		co.Error(ctxt, err)
-		return "", err
+		return nil, err
 	}
 	co.Debugf(ctxt, "CreateGetInitiator invoked for %s", iqn)
-	resp, err := r.sdk.Initiators.Get(&dsdk.InitiatorsGetRequest{
+	init, err := r.sdk.Initiators.Get(&dsdk.InitiatorsGetRequest{
 		Id: iqn,
 	})
-	var init dsdk.Initiator
 	if err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			co.Error(ctxt, err)
-			return "", err
+			return nil, err
 		}
-		cresp, err := r.sdk.Initiators.Create(&dsdk.InitiatorsCreateRequest{
+		init, err = r.sdk.Initiators.Create(&dsdk.InitiatorsCreateRequest{
 			Name: co.GenName(""),
 			Id:   iqn,
 		})
 		if err != nil {
 			co.Error(ctxt, err)
-			return "", err
+			return nil, err
 		}
-		init = dsdk.Initiator(*cresp)
 
-	} else {
-		init = dsdk.Initiator(*resp)
 	}
-	return init.Path, nil
+	return &Initiator{
+		Name: init.Name,
+		Path: init.Path,
+		Iqn:  init.Id,
+	}, nil
 }
 
-func (r DateraClient) CreateACL(ctxt context.Context, name string) error {
-	co.Debugf(ctxt, "CreateACL invoked for %s", name)
-	initPath, err := r.CreateGetInitiator(ctxt)
-	if err != nil {
-		co.Error(ctxt, err)
-		return err
-	}
+func (r *Volume) RegisterAcl(cinit *Initiator) error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateGetInitiator")
+	co.Debugf(ctxt, "CreateACL invoked for %s with initiator %s", r.Name, cinit.Name)
 	myInit := &dsdk.Initiator{
-		Path: initPath,
+		Path: cinit.Path,
 	}
 	// Update existing AclPolicy if it exists
-	resp, err := r.sdk.AppInstances.Get(&dsdk.AppInstancesGetRequest{
-		Id: name,
-	})
+	si := r.Ai.StorageInstances[0]
+	acl, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{})
 	if err != nil {
 		co.Error(ctxt, err)
 		return err
 	}
-	si := dsdk.AppInstance(*resp).StorageInstances[0]
-	aclResp, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{})
-	if err != nil {
-		co.Error(ctxt, err)
-		return err
-	}
-	acl := dsdk.AclPolicy(*aclResp)
 	acl.Initiators = append(acl.Initiators, myInit)
 	if _, err = acl.Set(&dsdk.AclPolicySetRequest{
 		Initiators: acl.Initiators,

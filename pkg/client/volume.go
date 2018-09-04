@@ -61,6 +61,9 @@ type Volume struct {
 	WriteBandwidthMax int
 	ReadBandwidthMax  int
 	TotalBandwidthMax int
+
+	DevicePath string
+	MountPath  string
 }
 
 func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, error) {
