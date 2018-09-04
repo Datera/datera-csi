@@ -31,7 +31,8 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 	}
 	co.Debugf(ctxt, "CreateGetInitiator invoked for %s", iqn)
 	init, err := r.sdk.Initiators.Get(&dsdk.InitiatorsGetRequest{
-		Id: iqn,
+		Ctxt: ctxt,
+		Id:   iqn,
 	})
 	if err != nil {
 		if !strings.Contains(err.Error(), "not found") {
