@@ -11,9 +11,15 @@ import (
 func (v *Volume) Login(multipath bool) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Login")
 	co.Debugf(ctxt, "Login invoked for %s", v.Name)
+	var ips []string
+	if multipath {
+		ips = v.Ips
+	} else {
+		ips = []string{v.Ips[0]}
+	}
 	c := iscsi.Connector{
 		TargetIqn:     v.Iqn,
-		TargetPortals: v.Ips,
+		TargetPortals: ips,
 		Port:          "3260",
 		Lun:           0,
 		Multipath:     multipath,
