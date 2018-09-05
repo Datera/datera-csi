@@ -33,7 +33,7 @@ func createRegisterInitiator(t *testing.T, client *DateraClient, vol *Volume) fu
 		t.Fatal(err)
 	}
 	return func() {
-		if err = init.Delete(); err != nil {
+		if err = init.Delete(false); err != nil {
 			t.Fatal(err)
 		}
 	}

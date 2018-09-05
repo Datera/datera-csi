@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -61,16 +62,25 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 	}, nil
 }
 
-func (r *Initiator) Delete() error {
+func (r *Initiator) Delete(quiet bool) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "Initiator Delete")
 	co.Debugf(ctxt, "Initiator Delete invoked")
 	_, apierr, err := r.Init.Delete(&dsdk.InitiatorDeleteRequest{
 		Ctxt: ctxt,
 		Id:   r.Iqn,
 	})
-	if err != nil || apierr != nil {
-		// We want to error out gracefully even if delete failed
+	if err != nil {
 		co.Error(ctxt, err)
+		if !quiet {
+			return err
+		}
+	}
+	if apierr != nil {
+		err = fmt.Errorf(dsdk.Pretty(apierr))
+		co.Error(ctxt, err)
+		if !quiet {
+			return err
+		}
 	}
 	return nil
 }
