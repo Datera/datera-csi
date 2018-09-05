@@ -34,7 +34,7 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 		Ctxt: ctxt,
 		Id:   iqn,
 	})
-	if err != nil {
+	if apierr != nil {
 		if apierr.Name != "NotFoundError" {
 			co.Error(ctxt, err)
 			return nil, err

@@ -14,6 +14,7 @@ func (v *Volume) Login(multipath bool) error {
 	c := iscsi.Connector{
 		TargetIqn:     v.Iqn,
 		TargetPortals: v.Ips,
+		Port:          "3260",
 		Lun:           0,
 		Multipath:     multipath,
 	}
