@@ -127,10 +127,10 @@ func TestACL(t *testing.T) {
 		Replica:      1,
 		WriteIopsMax: WIM,
 	}
-	_, vol, cleanf := createVolume(t, client, v)
-	defer cleanf()
-	cleanf = createRegisterInitiator(t, client, vol)
-	defer cleanf()
+	_, vol, cleanv := createVolume(t, client, v)
+	cleani := createRegisterInitiator(t, client, vol)
+	defer cleani()
+	defer cleanv()
 }
 
 func TestLoginLogout(t *testing.T) {
@@ -140,10 +140,10 @@ func TestLoginLogout(t *testing.T) {
 		Replica:      1,
 		WriteIopsMax: WIM,
 	}
-	_, vol, cleanf := createVolume(t, client, v)
-	defer cleanf()
-	cleanf = createRegisterInitiator(t, client, vol)
-	defer cleanf()
+	_, vol, cleanv := createVolume(t, client, v)
+	cleani := createRegisterInitiator(t, client, vol)
+	defer cleani()
+	defer cleanv()
 	vol.Login(false)
 	if vol.DevicePath == "" {
 		t.Fatal("Device Path not populated")
