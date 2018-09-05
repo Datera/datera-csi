@@ -14,6 +14,8 @@ var (
 )
 
 type Initiator struct {
+	ctxt context.Context
+	Init *dsdk.Initiator
 	Name string
 	Path string
 	Iqn  string
@@ -51,15 +53,31 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 
 	}
 	return &Initiator{
+		ctxt: ctxt,
+		Init: init,
 		Name: init.Name,
 		Path: init.Path,
 		Iqn:  init.Id,
 	}, nil
 }
 
+func (r *Initiator) Delete() error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "Initiator Delete")
+	co.Debugf(ctxt, "Initiator Delete invoked")
+	_, apierr, err := r.Init.Delete(&dsdk.InitiatorDeleteRequest{
+		Ctxt: ctxt,
+		Id:   r.Iqn,
+	})
+	if err != nil || apierr != nil {
+		// We want to error out gracefully even if delete failed
+		co.Error(ctxt, err)
+	}
+	return nil
+}
+
 func (r *Volume) RegisterAcl(cinit *Initiator) error {
-	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateGetInitiator")
-	co.Debugf(ctxt, "CreateACL invoked for %s with initiator %s", r.Name, cinit.Name)
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "RegisterAcl")
+	co.Debugf(ctxt, "RegisterAcl invoked for %s with initiator %s", r.Name, cinit.Name)
 	myInit := &dsdk.Initiator{
 		Path: cinit.Path,
 	}

@@ -24,13 +24,18 @@ func createVolume(t *testing.T, client *DateraClient, v *VolOpts) (string, *Volu
 
 }
 
-func createRegisterInitiator(t *testing.T, client *DateraClient, vol *Volume) {
+func createRegisterInitiator(t *testing.T, client *DateraClient, vol *Volume) func() {
 	init, err := client.CreateGetInitiator()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = vol.RegisterAcl(init); err != nil {
 		t.Fatal(err)
+	}
+	return func() {
+		if err = init.Delete(); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -123,11 +128,12 @@ func TestACL(t *testing.T) {
 		WriteIopsMax: WIM,
 	}
 	_, vol, cleanf := createVolume(t, client, v)
-	createRegisterInitiator(t, client, vol)
+	defer cleanf()
+	cleanf = createRegisterInitiator(t, client, vol)
 	defer cleanf()
 }
 
-func TestLogin(t *testing.T) {
+func TestLoginLogout(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{
 		Size:         5,
@@ -135,11 +141,13 @@ func TestLogin(t *testing.T) {
 		WriteIopsMax: WIM,
 	}
 	_, vol, cleanf := createVolume(t, client, v)
-	createRegisterInitiator(t, client, vol)
+	defer cleanf()
+	cleanf = createRegisterInitiator(t, client, vol)
+	defer cleanf()
 	vol.Login(false)
 	if vol.DevicePath == "" {
 		t.Fatal("Device Path not populated")
 	}
 	t.Logf("Device Path: %s", vol.DevicePath)
-	defer cleanf()
+	vol.Logout()
 }
