@@ -64,6 +64,8 @@ type Volume struct {
 
 	DevicePath string
 	MountPath  string
+	FsType     string
+	FsArgs     []string
 }
 
 func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, error) {
