@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -150,4 +151,29 @@ func TestLoginLogout(t *testing.T) {
 	}
 	t.Logf("Device Path: %s", vol.DevicePath)
 	vol.Logout()
+}
+
+func TestMountUnmount(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	cleani := createRegisterInitiator(t, client, vol)
+	defer cleani()
+	defer cleanv()
+	vol.Login(false)
+	defer vol.Logout()
+
+	if err := vol.Format("xfs", []string{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := vol.Mount(fmt.Sprintf("/mnt/my-dir-%s", dsdk.RandString(5)), []string{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := vol.Unmount(); err != nil {
+		t.Fatal(err)
+	}
 }

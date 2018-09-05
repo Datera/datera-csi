@@ -11,7 +11,7 @@ var (
 )
 
 func RunCmd(ctxt context.Context, cmd ...string) (string, error) {
-	Debugf(ctxt, "Running command: [%s]", strings.Join(cmd, " "))
+	Debugf(ctxt, "Running command: [%s]\n", strings.Join(cmd, " "))
 	prefix := cmd[0]
 	cmd = cmd[1:]
 	c := execCommand(prefix, cmd...)

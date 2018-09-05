@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 )
@@ -13,7 +14,7 @@ func (v *Volume) Format(fsType string, fsArgs []string) error {
 		co.Warningf(ctxt, "Volume %s already formatted: %s, %s", v.Name, v.FsType, v.FsArgs)
 		return nil
 	}
-	if err := format(ctxt, fsType, fsArgs); err != nil {
+	if err := format(ctxt, v.DevicePath, fsType, fsArgs); err != nil {
 		return err
 	}
 	v.FsType = fsType
@@ -21,8 +22,8 @@ func (v *Volume) Format(fsType string, fsArgs []string) error {
 	return nil
 }
 
-func format(ctxt context.Context, fsType string, fsArgs []string) error {
-	cmd := append([]string{fmt.Sprintf("mkfs.%s", fsType)}, fsArgs...)
+func format(ctxt context.Context, device, fsType string, fsArgs []string) error {
+	cmd := append([]string{fmt.Sprintf("mkfs.%s", fsType), device}, fsArgs...)
 	if _, err := co.RunCmd(ctxt, cmd...); err != nil {
 		return err
 	}
@@ -58,6 +59,14 @@ func (v *Volume) Unmount() error {
 }
 
 func mount(ctxt context.Context, device, dest string, options []string) error {
+	// Check/create directory
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		err = os.MkdirAll(dest, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	// Mount to directory
 	cmd := append([]string{"mount", device, dest}, options...)
 	_, err := co.RunCmd(ctxt, cmd...)
 	return err
@@ -66,5 +75,8 @@ func mount(ctxt context.Context, device, dest string, options []string) error {
 func unmount(ctxt context.Context, path string) error {
 	cmd := []string{"umount", path}
 	_, err := co.RunCmd(ctxt, cmd...)
-	return err
+	if err != nil {
+		return err
+	}
+	return os.Remove(path)
 }
