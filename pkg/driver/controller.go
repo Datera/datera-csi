@@ -19,7 +19,7 @@ const (
 
 type VolMetadata map[string]string
 
-func parseVolParams(params map[string]string) (*dc.VolOpts, error) {
+func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts, error) {
 	//Golang makes something that should be simple, repetative and gross
 	dparams := make(map[string]string, 13)
 	vo := &dc.VolOpts{}
@@ -30,6 +30,7 @@ func parseVolParams(params map[string]string) (*dc.VolOpts, error) {
 			dparams[nk] = params[k]
 		}
 	}
+	co.Debugf(ctxt, "Filtered Params: %s", dparams)
 	// set defaults
 	if _, ok := dparams["iops_per_gb"]; !ok {
 		dparams["iops_per_gb"] = "0"
@@ -184,7 +185,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		md["access-mode-"+s] = string(vc.GetAccessMode().Mode)
 	}
 	// Handle req.Parameters
-	params, err := parseVolParams(req.Parameters)
+	params, err := parseVolParams(ctxt, req.Parameters)
 	if err != nil {
 		return nil, err
 	}

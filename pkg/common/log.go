@@ -48,7 +48,7 @@ func Debug(ctxt context.Context, s interface{}) {
 }
 
 func Debugf(ctxt context.Context, s string, args ...interface{}) {
-	checkArgs(ctxt, s, args...)
+	s = checkArgs(ctxt, s, args...)
 	reqname := ctxt.Value(ReqName).(string)
 	tid := ctxt.Value(TraceId).(string)
 	log.WithFields(log.Fields{
@@ -67,7 +67,7 @@ func Info(ctxt context.Context, s interface{}) {
 }
 
 func Infof(ctxt context.Context, s string, args ...interface{}) {
-	checkArgs(ctxt, s, args...)
+	s = checkArgs(ctxt, s, args...)
 	reqname := ctxt.Value(ReqName).(string)
 	tid := ctxt.Value(TraceId).(string)
 	log.WithFields(log.Fields{
@@ -86,7 +86,7 @@ func Warning(ctxt context.Context, s interface{}) {
 }
 
 func Warningf(ctxt context.Context, s string, args ...interface{}) {
-	checkArgs(ctxt, s, args...)
+	s = checkArgs(ctxt, s, args...)
 	reqname := ctxt.Value(ReqName).(string)
 	tid := ctxt.Value(TraceId).(string)
 	log.WithFields(log.Fields{
@@ -105,7 +105,7 @@ func Error(ctxt context.Context, s interface{}) {
 }
 
 func Errorf(ctxt context.Context, s string, args ...interface{}) {
-	checkArgs(ctxt, s, args...)
+	s = checkArgs(ctxt, s, args...)
 	reqname := ctxt.Value(ReqName).(string)
 	tid := ctxt.Value(TraceId).(string)
 	log.WithFields(log.Fields{
@@ -124,7 +124,7 @@ func Fatal(ctxt context.Context, s interface{}) {
 }
 
 func Fatalf(ctxt context.Context, s string, args ...interface{}) {
-	checkArgs(ctxt, s, args...)
+	s = checkArgs(ctxt, s, args...)
 	reqname := ctxt.Value(ReqName).(string)
 	tid := ctxt.Value(TraceId).(string)
 	log.WithFields(log.Fields{
@@ -145,13 +145,17 @@ func GenId() string {
 }
 
 // Hack just to make sure I don't miss these
-func checkArgs(ctxt context.Context, s string, args ...interface{}) {
+func checkArgs(ctxt context.Context, s string, args ...interface{}) string {
 	c := 0
-	for _, f := range []string{"%s", "%d", "%v", "%#v", "%t", "%p"} {
+	for _, f := range []string{"%s", "%d", "%v", "%#v", "%t", "%p", "%+v"} {
 		c += strings.Count(s, f)
 	}
 	l := len(args)
 	if c != l {
-		Warningf(ctxt, "Wrong number of args for format string, [%d != %d]", l, c)
+		Warningf(ctxt, "Wrong number of args for format string, [%d != %d]\n", l, c)
 	}
+	if !strings.HasSuffix(s, "\n") {
+		s = strings.Join([]string{s, "\n"}, "")
+	}
+	return s
 }
