@@ -138,6 +138,9 @@ func validateSnapId(snapId string) error {
 }
 
 func handleTopologyRequirement(tr *csi.TopologyRequirement) error {
+	if tr == nil {
+		return nil
+	}
 	if len(tr.Requisite) > 0 || len(tr.Preferred) > 0 {
 		return fmt.Errorf("TopologyRequirements and Preferred Topologies are currently unsupported")
 	}
