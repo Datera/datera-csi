@@ -16,6 +16,9 @@ type VolOpts struct {
 	FsArgs          string
 	PlacementMode   string
 	CloneSrc        string
+	CloneVolSrc     string
+	CloneSnapSrc    string
+	IpPool          string
 	RoundRobin      bool
 	DeleteOnUnmount bool
 
@@ -126,6 +129,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 	co.Debugf(ctxt, "CreateVolume invoked for %s, volOpts: %#v", name, volOpts)
 	var ai dsdk.AppInstancesCreateRequest
 	if volOpts.Template != "" {
+		// From Template
 		template := strings.Trim(volOpts.Template, "/")
 		co.Debugf(ctxt, "Creating AppInstance with template: %s", template)
 		at := &dsdk.AppTemplate{
@@ -136,15 +140,26 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 			Name:        name,
 			AppTemplate: at,
 		}
-	} else if volOpts.CloneSrc != "" {
-		c := &dsdk.AppInstance{Path: "/app_instances/" + volOpts.CloneSrc}
-		co.Debugf(ctxt, "Creating AppInstance from clone: %s", volOpts.CloneSrc)
+	} else if volOpts.CloneVolSrc != "" {
+		// Clone Volume
+		c := &dsdk.Volume{Path: volOpts.CloneVolSrc}
+		co.Debugf(ctxt, "Creating AppInstance from Volume clone: %s", volOpts.CloneVolSrc)
 		ai = dsdk.AppInstancesCreateRequest{
-			Ctxt:     ctxt,
-			Name:     name,
-			CloneSrc: c,
+			Ctxt:           ctxt,
+			Name:           name,
+			CloneVolumeSrc: c,
+		}
+	} else if volOpts.CloneSnapSrc != "" {
+		// Clone Snapshot
+		c := &dsdk.Snapshot{Path: volOpts.CloneSnapSrc}
+		co.Debugf(ctxt, "Creating AppInstance from Snapshot clone: %s", volOpts.CloneSrc)
+		ai = dsdk.AppInstancesCreateRequest{
+			Ctxt:             ctxt,
+			Name:             name,
+			CloneSnapshotSrc: c,
 		}
 	} else {
+		// Vanilla Volume Create
 		vol := &dsdk.Volume{
 			Name:          "volume-1",
 			Size:          int(volOpts.Size),
@@ -186,11 +201,18 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 		Ctxt: ctxt,
 		Id:   name,
 	})
+	v, err := r.AiToClientVol(ai, false)
 	if err != nil || apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
-	_, apierr, err = ai.Set(&dsdk.AppInstanceSetRequest{
+	return v.Delete(force)
+}
+
+func (r *Volume) Delete(force bool) error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "Delete")
+	co.Debugf(ctxt, "Volume Delete invoked for %s", r.Name)
+	_, apierr, err := r.Ai.Set(&dsdk.AppInstanceSetRequest{
 		Ctxt:       ctxt,
 		AdminState: "offline",
 		Force:      force,
@@ -199,7 +221,7 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return err
 	}
-	_, apierr, err = ai.Delete(&dsdk.AppInstanceDeleteRequest{
+	_, apierr, err = r.Ai.Delete(&dsdk.AppInstanceDeleteRequest{
 		Ctxt:  ctxt,
 		Force: force,
 	})

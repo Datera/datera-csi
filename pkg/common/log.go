@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"strings"
 
 	uuid "github.com/google/uuid"
@@ -26,12 +25,6 @@ func MustS(s string, err error) string {
 		panic(err)
 	}
 	return s
-}
-
-func ExecC(ctxt context.Context, name string, arg ...string) *exec.Cmd {
-	cmd := name + " " + strings.Join(arg, " ")
-	Debugf(ctxt, "Executing Command: %s", cmd)
-	return exec.Command(name, arg...)
 }
 
 func Prettify(v interface{}) string {

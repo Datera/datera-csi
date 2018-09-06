@@ -3,39 +3,140 @@ package driver
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	units "github.com/docker/go-units"
 	log "github.com/sirupsen/logrus"
 
+	dc "github.com/Datera/datera-csi/pkg/client"
 	co "github.com/Datera/datera-csi/pkg/common"
 )
 
 type VolMetadata map[string]string
 
-func handleVolParams(params map[string]string) map[string]string {
-	// pull out everything prefixed with 'DF:'
-	dparams := make(map[string]string, 10)
+func parseVolParams(params map[string]string) (*dc.VolOpts, error) {
+	//Golang makes something that should be simple, repetative and gross
+	dparams := make(map[string]string, 13)
+	vo := &dc.VolOpts{}
+	var err error
 	for k := range params {
 		if strings.HasPrefix("DF:", k) {
 			nk := strings.TrimLeft("DF:", k)
 			dparams[nk] = params[k]
 		}
 	}
-	return dparams
+	// set defaults
+	if _, ok := dparams["iops_per_gb"]; !ok {
+		dparams["iops_per_gb"] = "0"
+	}
+	if _, ok := dparams["bandwidth_per_gb"]; !ok {
+		dparams["bandwidth_per_gb"] = "0"
+	}
+	if _, ok := dparams["placement_mode"]; !ok {
+		dparams["placement_mode"] = "hybrid"
+	}
+	if _, ok := dparams["round_robin"]; !ok {
+		dparams["round_robin"] = "false"
+	}
+	if _, ok := dparams["replica_count"]; !ok {
+		dparams["replica_count"] = "3"
+	}
+	if _, ok := dparams["ip_pool"]; !ok {
+		dparams["ip_pool"] = "default"
+	}
+	if _, ok := dparams["template"]; !ok {
+		dparams["template"] = ""
+	}
+	if _, ok := dparams["read_iops_max"]; !ok {
+		dparams["read_iops_max"] = "0"
+	}
+	if _, ok := dparams["write_iops_max"]; !ok {
+		dparams["write_iops_max"] = "0"
+	}
+	if _, ok := dparams["total_iops_max"]; !ok {
+		dparams["total_iops_max"] = "0"
+	}
+	if _, ok := dparams["read_bandwidth_max"]; !ok {
+		dparams["read_bandwidth_max"] = "0"
+	}
+	if _, ok := dparams["write_bandwidth_max"]; !ok {
+		dparams["write_bandwidth_max"] = "0"
+	}
+	if _, ok := dparams["total_bandwidth_max"]; !ok {
+		dparams["total_bandwidth_max"] = "0"
+	}
+
+	val, err := strconv.ParseInt(dparams["iops_per_gb"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.IopsPerGb = int(val)
+	val, err = strconv.ParseInt(dparams["bandwidth_per_gb"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.BandwidthPerGb = int(val)
+	vo.PlacementMode = dparams["placement_mode"]
+	b, err := strconv.ParseBool(dparams["round_robin"])
+	if err != nil {
+		return nil, err
+	}
+	vo.RoundRobin = b
+	val, err = strconv.ParseInt(dparams["replica_count"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.Replica = int(val)
+	vo.IpPool = dparams["ip_pool"]
+	vo.Template = dparams["template"]
+	val, err = strconv.ParseInt(dparams["read_iops_max"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.ReadIopsMax = int(val)
+	val, err = strconv.ParseInt(dparams["write_iops_max"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.WriteIopsMax = int(val)
+	val, err = strconv.ParseInt(dparams["total_iops_max"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.TotalIopsMax = int(val)
+	val, err = strconv.ParseInt(dparams["read_bandwidth_max"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.ReadBandwidthMax = int(val)
+	val, err = strconv.ParseInt(dparams["write_bandwidth_max"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.WriteBandwidthMax = int(val)
+	val, err = strconv.ParseInt(dparams["total_bandwidth_max"], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	vo.TotalBandwidthMax = int(val)
+	return vo, nil
 }
 
-func handleVolSecrets(secrets map[string]string) {
+func validateSnapId(snapId string) error {
+	const example = "/app_instances/my-app/storage_instances/storage-1/volumes/volume-1/snapshots/1536262088.285952448"
+	parts := strings.Split(strings.TrimLeft(snapId, "/"), "/")
+	if len(parts) != 8 {
+		return fmt.Errorf("Snapshot ID invalid.  Example: %s", example)
+	}
+	return nil
 }
 
-func handleSnap(id string) {
-}
-
-func handleTopologyRequirement(tr *csi.TopologyRequirement) {
-}
-
-func handleVolumeDelete(vid string, secrets map[string]string) error {
+func handleTopologyRequirement(tr *csi.TopologyRequirement) error {
+	if len(tr.Requisite) > 0 || len(tr.Preferred) > 0 {
+		return fmt.Errorf("TopologyRequirements and Preferred Topologies are currently unsupported")
+	}
 	return nil
 }
 
@@ -47,10 +148,17 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	logp.Info("Controller server 'CreateVolume' called")
 	logp.Debugf("CreateVolumeRequest: %+v", *req)
 
+	// Handle req.AccessibilityRequirements.  Currently we just error out if a topology requirement exists
+	// TODO: Digest this beast: https://github.com/container-storage-interface/spec/blob/master/lib/go/csi/v0/csi.pb.go#L1431
+	if err := handleTopologyRequirement(req.AccessibilityRequirements); err != nil {
+		return nil, err
+	}
+
 	md := make(VolMetadata)
 
 	// Handle req.Name
 	id := co.GenName(req.Name)
+	md["display-name"] = req.Name
 
 	// Handle req.CapacityRange
 	cr := req.CapacityRange
@@ -75,27 +183,35 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		md["access-type-"+s] = at
 		md["access-mode-"+s] = string(vc.GetAccessMode().Mode)
 	}
-
 	// Handle req.Parameters
-	params := handleVolParams(req.Parameters)
-	println(params)
-
-	// Handle req.ControllerCreateSecrets
-	handleVolSecrets(req.ControllerCreateSecrets)
+	params, err := parseVolParams(req.Parameters)
+	if err != nil {
+		return nil, err
+	}
 
 	// Handle req.VolumeContentSource
 	cs := req.VolumeContentSource
 	if snap := cs.GetSnapshot(); snap != nil {
-		handleSnap(snap.Id)
+		if err = validateSnapId(snap.Id); err != nil {
+			return nil, err
+		}
+		params.CloneSnapSrc = snap.Id
 	}
 
-	// Handle req.AccessibilityRequirements
-	handleTopologyRequirement(req.AccessibilityRequirements)
+	// Create AppInstance/StorageInstance/Volume
+	vol, err := d.dc.CreateVolume(id, params, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle req.ControllerCreateSecrets
+	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
+	// handleVolSecrets(req.ControllerCreateSecrets)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			CapacityBytes: size,
-			Id:            id,
+			Id:            vol.Name,
 			Attributes:    map[string]string{},
 			ContentSource: nil,
 		},
@@ -107,10 +223,10 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 	logp.Info("Controller server 'DeleteVolume' called")
 	logp.Debugf("DeleteVolumeRequest: %+v", *req)
 	vid := req.VolumeId
-	sec := req.ControllerDeleteSecrets
-	err := handleVolumeDelete(vid, sec)
-	// Always handle errors gracefully for delete.  Log them and return
-	if err != nil {
+	// Handle req.ControllerDeleteSecrets
+	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
+	// sec := req.ControllerDeleteSecrets
+	if err := d.dc.DeleteVolume(req.VolumeId, true); err != nil {
 		logp.Errorf("Error deleting volume: %s.  err: %s", vid, err)
 	}
 	return &csi.DeleteVolumeResponse{}, nil
