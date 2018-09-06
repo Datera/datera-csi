@@ -26,7 +26,7 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	var err error
 	for k := range params {
 		if strings.HasPrefix(k, "DF:") {
-			nk := strings.TrimLeft("DF:", k)
+			nk := strings.Replace(k, "DF:", "", 1)
 			dparams[nk] = params[k]
 		}
 	}
