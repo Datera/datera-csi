@@ -14,6 +14,10 @@ import (
 	co "github.com/Datera/datera-csi/pkg/common"
 )
 
+const (
+	DefaultSize = 16
+)
+
 type VolMetadata map[string]string
 
 func parseVolParams(params map[string]string) (*dc.VolOpts, error) {
@@ -162,11 +166,22 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	// Handle req.CapacityRange
 	cr := req.CapacityRange
-	if cr.RequiredBytes >= cr.LimitBytes {
+	if cr != nil && cr.RequiredBytes >= cr.LimitBytes {
 		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
 	}
-	// Default to LimitBytes since we've verified that it's larger than RequiredBytes
-	size := cr.LimitBytes / units.GiB
+	var size int
+	if cr != nil {
+		// Default to LimitBytes since we've verified that it's larger than RequiredBytes
+		size = int(cr.LimitBytes / units.GiB)
+		// If we haven't been passed any capacity, default to 16 GiB
+		if size == 0 {
+			size = DefaultSize
+		} else if size < 1 {
+			size = 1
+		}
+	} else {
+		size = DefaultSize
+	}
 	// Record req.VolumeCapabilities in metadata
 	vcs := req.VolumeCapabilities
 	for i, vc := range vcs {
@@ -210,7 +225,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			CapacityBytes: size,
+			CapacityBytes: int64(size),
 			Id:            vol.Name,
 			Attributes:    map[string]string{},
 			ContentSource: nil,
