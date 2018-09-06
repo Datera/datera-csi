@@ -8,7 +8,6 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	units "github.com/docker/go-units"
-	log "github.com/sirupsen/logrus"
 
 	dc "github.com/Datera/datera-csi/pkg/client"
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -151,9 +150,10 @@ func handleControllerPublishVolume(vid, nid string, capabiltity *csi.VolumeCapab
 }
 
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	logp := log.WithField("method", "create_volume")
-	logp.Info("Controller server 'CreateVolume' called")
-	logp.Debugf("CreateVolumeRequest: %+v", *req)
+	ctxt := co.MkCtxt("controller.CreateVolume")
+	d.dc.WithContext(ctxt)
+	co.Info(ctxt, "Controller server 'CreateVolume' called")
+	co.Debugf(ctxt, "CreateVolumeRequest: %+v", *req)
 
 	// Handle req.AccessibilityRequirements.  Currently we just error out if a topology requirement exists
 	// TODO: Digest this beast: https://github.com/container-storage-interface/spec/blob/master/lib/go/csi/v0/csi.pb.go#L1431
@@ -237,23 +237,25 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	logp := log.WithField("method", "delete_volume")
-	logp.Info("Controller server 'DeleteVolume' called")
-	logp.Debugf("DeleteVolumeRequest: %+v", *req)
+	ctxt := co.MkCtxt("controller.DeleteVolume")
+	d.dc.WithContext(ctxt)
+	co.Info(ctxt, "Controller server 'DeleteVolume' called")
+	co.Debugf(ctxt, "DeleteVolumeRequest: %+v", *req)
 	vid := req.VolumeId
 	// Handle req.ControllerDeleteSecrets
 	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
 	// sec := req.ControllerDeleteSecrets
 	if err := d.dc.DeleteVolume(req.VolumeId, true); err != nil {
-		logp.Errorf("Error deleting volume: %s.  err: %s", vid, err)
+		co.Errorf(ctxt, "Error deleting volume: %s.  err: %s", vid, err)
 	}
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	logp := log.WithField("method", "controller_publish_volume")
-	logp.Info("Controller server 'ControllerPublishVolume' called")
-	logp.Debugf("ControllerPublishVolumeRequest: %+v", *req)
+	ctxt := co.MkCtxt("controller.ControllerPublishVolume")
+	d.dc.WithContext(ctxt)
+	co.Info(ctxt, "Controller server 'ControllerPublishVolume' called")
+	co.Debugf(ctxt, "ControllerPublishVolumeRequest: %+v", *req)
 	vid := req.VolumeId
 	nid := req.NodeId
 	vc := req.VolumeCapability
