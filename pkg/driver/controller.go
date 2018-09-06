@@ -167,24 +167,6 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	id := co.GenName(req.Name)
 	md["display-name"] = req.Name
 
-	// Handle req.CapacityRange
-	cr := req.CapacityRange
-	if cr != nil && cr.RequiredBytes >= cr.LimitBytes {
-		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
-	}
-	var size int
-	if cr != nil {
-		// Default to LimitBytes since we've verified that it's larger than RequiredBytes
-		size = int(cr.LimitBytes / units.GiB)
-		// If we haven't been passed any capacity, default to 16 GiB
-		if size == 0 {
-			size = DefaultSize
-		} else if size < 1 {
-			size = 1
-		}
-	} else {
-		size = DefaultSize
-	}
 	// Record req.VolumeCapabilities in metadata
 	vcs := req.VolumeCapabilities
 	for i, vc := range vcs {
@@ -216,6 +198,25 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		params.CloneSnapSrc = snap.Id
 	}
 
+	// Handle req.CapacityRange
+	cr := req.CapacityRange
+	if cr != nil && cr.RequiredBytes >= cr.LimitBytes {
+		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
+	}
+	var size int
+	if cr != nil {
+		// Default to LimitBytes since we've verified that it's larger than RequiredBytes
+		size = int(cr.LimitBytes / units.GiB)
+		// If we haven't been passed any capacity, default to 16 GiB
+		if size == 0 {
+			size = DefaultSize
+		} else if size < 1 {
+			size = 1
+		}
+	} else {
+		size = DefaultSize
+	}
+	params.Size = size
 	// Create AppInstance/StorageInstance/Volume
 	vol, err := d.dc.CreateVolume(id, params, true)
 	if err != nil {
