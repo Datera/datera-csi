@@ -156,6 +156,21 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	co.Info(ctxt, "Controller server 'CreateVolume' called")
 	co.Debugf(ctxt, "CreateVolumeRequest: %+v", *req)
 
+	// Handle req.Name
+	id := co.GenName(req.Name)
+
+	// Check to see if a volume already exists with this name
+	if vol, err := d.dc.GetVolume(id, false); err == nil {
+		return &csi.CreateVolumeResponse{
+			Volume: &csi.Volume{
+				CapacityBytes: int64(vol.Size),
+				Id:            vol.Name,
+				Attributes:    map[string]string{},
+				ContentSource: nil,
+			},
+		}, nil
+	}
+
 	// Handle req.AccessibilityRequirements.  Currently we just error out if a topology requirement exists
 	// TODO: Digest this beast: https://github.com/container-storage-interface/spec/blob/master/lib/go/csi/v0/csi.pb.go#L1431
 	if err := handleTopologyRequirement(req.AccessibilityRequirements); err != nil {
@@ -163,9 +178,6 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	md := make(VolMetadata)
-
-	// Handle req.Name
-	id := co.GenName(req.Name)
 	md["display-name"] = req.Name
 
 	// Record req.VolumeCapabilities in metadata

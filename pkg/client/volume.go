@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -52,6 +53,7 @@ type Volume struct {
 
 	Replicas      int
 	PlacementMode string
+	Size          int
 
 	// QoS in map form, mostly for logging
 	QoS map[string]int
@@ -113,6 +115,7 @@ func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, er
 
 		Replicas:      v.ReplicaCount,
 		PlacementMode: v.PlacementMode,
+		Size:          v.Size,
 
 		QoS:               pp,
 		ReadIopsMax:       pp["read_iops_max"],
@@ -122,6 +125,26 @@ func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, er
 		WriteBandwidthMax: pp["write_bandwidth_max"],
 		TotalBandwidthMax: pp["total_bandwidth_max"],
 	}, nil
+}
+
+func (r DateraClient) GetVolume(name string, qos bool) (*Volume, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetVolume")
+	co.Debugf(ctxt, "GetVolume invoked for %s", name)
+	newAi, apierr, err := r.sdk.AppInstances.Get(&dsdk.AppInstancesGetRequest{
+		Ctxt: ctxt,
+		Id:   name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if apierr != nil {
+		return nil, fmt.Errorf("%s", apierr.Name)
+	}
+	v, err := r.AiToClientVol(newAi, qos)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Volume, error) {
