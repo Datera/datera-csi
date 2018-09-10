@@ -22,7 +22,7 @@ testv:
 
 testc:
 	@echo "==> Testing the Datera CSI Driver (compile only)"
-	@env go test -run ^$ ../../pkg/client ../../pkg/driver
+	@env go test -c ../../pkg/client ../../pkg/driver
 
 
 clean:

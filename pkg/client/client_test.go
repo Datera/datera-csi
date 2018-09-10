@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -49,7 +50,7 @@ func getClient(t *testing.T) *DateraClient {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.NewContext(nil)
+	client.WithContext(context.Background())
 	return client
 }
 
@@ -77,20 +78,46 @@ func TestListVolumes(t *testing.T) {
 		Replica:      1,
 		WriteIopsMax: WIM,
 	}
-	name, _, cleanf := createVolume(t, client, v)
-	defer cleanf()
-	vols, err := client.ListVolumes()
+	names := []string{}
+	for i := 0; i < 5; i++ {
+		name, _, cleanf := createVolume(t, client, v)
+		names = append(names, name)
+		defer cleanf()
+	}
+	vols, err := client.ListVolumes(0, "0")
+	lv := len(vols)
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := false
-	for _, vol := range vols {
-		if vol.Name == name {
-			found = true
+	for _, name := range names {
+		found := false
+		for _, vol := range vols {
+			if vol.Name == name {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("Did not find AppInstance created by test: %s", name)
 		}
 	}
-	if !found {
-		t.Fatalf("Did not find AppInstance created by test: %s", name)
+
+	vols, err = client.ListVolumes(1, "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(vols) != lv-1 {
+		t.Fatalf("Did not return expected number of volumes: [%d] != [%d]", len(vols), lv-1)
+	}
+	for _, name := range names {
+		found := false
+		for _, vol := range vols {
+			if vol.Name == name {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("Did not find AppInstance created by test: %s", name)
+		}
 	}
 }
 
