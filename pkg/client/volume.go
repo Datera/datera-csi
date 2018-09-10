@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -255,10 +256,17 @@ func (r *Volume) Delete(force bool) error {
 	return nil
 }
 
-func (r DateraClient) ListVolumes() ([]*Volume, error) {
+func (r DateraClient) ListVolumes(maxEntries int, startToken string) ([]*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListVolumes")
 	co.Debug(ctxt, "ListVolumes invoked")
-	resp, apierr, err := r.sdk.AppInstances.List(&dsdk.AppInstancesListRequest{Ctxt: ctxt})
+	params := map[string]string{
+		"limit":  strconv.FormatInt(int64(maxEntries), 10),
+		"offset": startToken,
+	}
+	resp, apierr, err := r.sdk.AppInstances.List(&dsdk.AppInstancesListRequest{
+		Ctxt:   ctxt,
+		Params: params,
+	})
 	if err != nil || apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, err
