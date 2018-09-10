@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -50,7 +49,7 @@ func getClient(t *testing.T) *DateraClient {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.WithContext(context.Background())
+	client.NewContext()
 	return client
 }
 

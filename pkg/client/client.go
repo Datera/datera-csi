@@ -27,6 +27,11 @@ func NewDateraClient(udc *udc.UDC) (*DateraClient, error) {
 	}, nil
 }
 
+func (r *DateraClient) NewContext() context.Context {
+	r.ctxt = r.sdk.NewContext()
+	return r.ctxt
+}
+
 func (r *DateraClient) WithContext(ctxt context.Context) context.Context {
 	r.ctxt = r.sdk.WithContext(ctxt)
 	return r.ctxt
