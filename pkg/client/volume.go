@@ -87,9 +87,12 @@ func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, er
 		resp, apierr, err := v.PerformancePolicy.Get(&dsdk.PerformancePolicyGetRequest{
 			Ctxt: ctxt,
 		})
-		if err != nil || apierr != nil {
-			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		if err != nil {
+			co.Error(ctxt, err)
 			return nil, err
+		} else if apierr != nil {
+			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+			return nil, fmt.Errorf("ApiError: %s", apierr)
 		}
 		pp = map[string]int{
 			"read_iops_max":       resp.ReadIopsMax,
@@ -201,9 +204,12 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 		}
 	}
 	newAi, apierr, err := r.sdk.AppInstances.Create(&ai)
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return nil, err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return nil, fmt.Errorf("ApiError: %s", apierr)
 	}
 	v, err := r.AiToClientVol(newAi, false)
 	if qos {
@@ -226,9 +232,12 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 		Id:   name,
 	})
 	v, err := r.AiToClientVol(ai, false)
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %s", apierr)
 	}
 	return v.Delete(force)
 }
@@ -241,17 +250,23 @@ func (r *Volume) Delete(force bool) error {
 		AdminState: "offline",
 		Force:      force,
 	})
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %s", apierr)
 	}
 	_, apierr, err = r.Ai.Delete(&dsdk.AppInstanceDeleteRequest{
 		Ctxt:  ctxt,
 		Force: force,
 	})
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %s", apierr)
 	}
 	return nil
 }
@@ -267,9 +282,12 @@ func (r DateraClient) ListVolumes(maxEntries int, startToken string) ([]*Volume,
 		Ctxt:   ctxt,
 		Params: params,
 	})
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return nil, err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return nil, fmt.Errorf("ApiError: %s", apierr)
 	}
 	vols := []*Volume{}
 	for _, ai := range resp {
@@ -297,9 +315,12 @@ func (r *Volume) SetPerformancePolicy(volOpts *VolOpts) error {
 		TotalBandwidthMax: int(volOpts.TotalBandwidthMax),
 	}
 	resp, apierr, err := ai.StorageInstances[0].Volumes[0].PerformancePolicy.Create(&pp)
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %s", apierr)
 	}
 	r.QoS = map[string]int{
 		"read_iops_max":       resp.ReadIopsMax,
@@ -324,9 +345,12 @@ func (r *Volume) GetMetadata() (*map[string]string, error) {
 	resp, apierr, err := r.Ai.GetMetadata(&dsdk.AppInstanceMetadataGetRequest{
 		Ctxt: ctxt,
 	})
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return nil, err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return nil, fmt.Errorf("ApiError: %s", apierr)
 	}
 	result := map[string]string(*resp)
 	return &result, nil
@@ -339,9 +363,12 @@ func (r *Volume) SetMetadata(metadata *map[string]string) (*map[string]string, e
 		Ctxt:     ctxt,
 		Metadata: *metadata,
 	})
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return nil, err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return nil, fmt.Errorf("ApiError: %s", apierr)
 	}
 	result := map[string]string(*resp)
 	return &result, nil

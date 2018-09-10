@@ -47,9 +47,12 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 			Name: co.GenName(""),
 			Id:   iqn,
 		})
-		if err != nil || apierr != nil {
-			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		if err != nil {
+			co.Error(ctxt, err)
 			return nil, err
+		} else if apierr != nil {
+			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+			return nil, fmt.Errorf("ApiError: %s", apierr)
 		}
 
 	}
@@ -94,17 +97,23 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 	// Update existing AclPolicy if it exists
 	si := r.Ai.StorageInstances[0]
 	acl, apierr, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{Ctxt: ctxt})
-	if err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	if err != nil {
+		co.Error(ctxt, err)
 		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %s", apierr)
 	}
 	acl.Initiators = append(acl.Initiators, myInit)
 	if _, apierr, err = acl.Set(&dsdk.AclPolicySetRequest{
 		Ctxt:       ctxt,
 		Initiators: acl.Initiators,
-	}); err != nil || apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+	}); err != nil {
+		co.Error(ctxt, err)
 		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %s", apierr)
 	}
 	return nil
 }
