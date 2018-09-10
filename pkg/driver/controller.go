@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -147,6 +148,32 @@ func handleTopologyRequirement(tr *csi.TopologyRequirement) error {
 	return nil
 }
 
+func registerVolumeCapability(ctxt context.Context, md *VolMetadata, vc *csi.VolumeCapability) {
+	// Record req.VolumeCapabilities in metadata We don't actually do anything
+	// with this information because it's all the same to us, but we should
+	// keep it for future product filtering/aggregate operations
+	var (
+		at string
+		fs string
+	)
+	mo := string(vc.GetAccessMode().Mode)
+	switch vc.GetAccessType().(type) {
+	case *csi.VolumeCapability_Block:
+		at = "block"
+	case *csi.VolumeCapability_Mount:
+		at = "mount"
+		fs = vc.GetMount().FsType + " " + strings.Join(vc.GetMount().MountFlags, "")
+		co.Debugf(ctxt, "Registering Filesystem %s", fs)
+	default:
+		at = "unknown"
+	}
+	co.Debugf(ctxt, "Registering VolumeCapability %s", at)
+	co.Debugf(ctxt, "Registering VolumeCapability %s", mo)
+	(*md)["access-type"] = at
+	(*md)["access-fs"] = fs
+	(*md)["access-mode"] = mo
+}
+
 func handleControllerPublishVolume(vid, nid string, capabiltity *csi.VolumeCapability, readOnly bool, secrets, attrs map[string]string) {
 }
 
@@ -180,21 +207,9 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	md := make(VolMetadata)
 	md["display-name"] = req.Name
 
-	// Record req.VolumeCapabilities in metadata
 	vcs := req.VolumeCapabilities
-	for i, vc := range vcs {
-		s := string(i)
-		var at string
-		switch vc.GetAccessType().(type) {
-		case *csi.VolumeCapability_Block:
-			at = "block"
-		case *csi.VolumeCapability_Mount:
-			at = "mount"
-		default:
-			at = ""
-		}
-		md["access-type-"+s] = at
-		md["access-mode-"+s] = string(vc.GetAccessMode().Mode)
+	for _, vc := range vcs {
+		registerVolumeCapability(ctxt, &md, vc)
 	}
 	// Handle req.Parameters
 	params, err := parseVolParams(ctxt, req.Parameters)
@@ -270,15 +285,14 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	d.dc.WithContext(ctxt)
 	co.Info(ctxt, "Controller server 'ControllerPublishVolume' called")
 	co.Debugf(ctxt, "ControllerPublishVolumeRequest: %+v", *req)
-	vid := req.VolumeId
-	nid := req.NodeId
-	vc := req.VolumeCapability
-	ro := req.Readonly
-	cps := req.ControllerPublishSecrets
-	va := req.VolumeAttributes
-	handleControllerPublishVolume(vid, nid, vc, ro, cps, va)
+	h, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
 	return &csi.ControllerPublishVolumeResponse{
-		PublishInfo: map[string]string{},
+		PublishInfo: map[string]string{
+			"controller_host": h,
+		},
 	}, nil
 }
 
