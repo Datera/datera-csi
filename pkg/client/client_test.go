@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	udc "github.com/Datera/go-udc/pkg/udc"
@@ -57,6 +58,7 @@ func createSnapshot(t *testing.T, client *DateraClient, vol *Volume) (*Snapshot,
 			t.Fatal(fmt.Errorf("Snapshot %s was not available within timeout", snap.Id))
 		}
 		timeout--
+		time.Sleep(time.Second * 1)
 	}
 	return snap, func() {
 		if err = vol.DeleteSnapshot(snap.Id); err != nil {
