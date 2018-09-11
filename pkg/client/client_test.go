@@ -46,7 +46,7 @@ func createSnapshot(t *testing.T, client *DateraClient, vol *Volume) (*Snapshot,
 	if err != nil {
 		t.Fatal(err)
 	}
-	timeout := 10
+	timeout := 20
 	for {
 		if err = snap.Reload(); err != nil {
 			t.Fatal(err)
