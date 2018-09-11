@@ -203,3 +203,19 @@ func TestMountUnmount(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateDeleteSnapshot(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	defer cleanv()
+	snap, err := vol.CreateSnapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	vol.DeleteSnapshot(snap.Id)
+}

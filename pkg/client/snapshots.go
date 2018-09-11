@@ -30,7 +30,7 @@ func (r Volume) CreateSnapshot() (*Snapshot, error) {
 	}
 	return &Snapshot{
 		Snap: snap,
-		Id:   snap.Uuid,
+		Id:   snap.UtcTs,
 	}, nil
 }
 
@@ -70,7 +70,7 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken string)
 		"offset": startToken,
 	}
 	v := r.Ai.StorageInstances[0].Volumes[0]
-	_, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
+	rsnaps, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
 		Ctxt:   ctxt,
 		Params: params,
 	})
@@ -80,6 +80,12 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken string)
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
+	}
+	for _, s := range rsnaps {
+		snaps = append(snaps, &Snapshot{
+			Snap: s,
+			Id:   s.UtcTs,
+		})
 	}
 	return snaps, nil
 }
