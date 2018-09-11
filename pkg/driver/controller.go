@@ -149,6 +149,7 @@ func handleTopologyRequirement(tr *csi.TopologyRequirement) error {
 
 func registerMdFromCtxt(ctxt context.Context, md *dc.VolMetadata) error {
 	gmdata, ok := gmd.FromIncomingContext(ctxt)
+	co.Debugf(ctxt, "Recieved Metadata: %s", gmdata)
 	if !ok {
 		return fmt.Errorf("Error retrieving metadata from RPC")
 	}
@@ -215,6 +216,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	md := &dc.VolMetadata{}
 	(*md)["display-name"] = req.Name
+	registerMdFromCtxt(ctxt, md)
 
 	vcs := req.VolumeCapabilities
 	for _, vc := range vcs {
