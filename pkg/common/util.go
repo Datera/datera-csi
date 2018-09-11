@@ -29,8 +29,8 @@ func Prettify(v interface{}) string {
 	return string(b)
 }
 
-func MkCtxt(reqName string) context.Context {
-	ctxt := context.WithValue(topctxt, TraceId, GenId())
+func WithCtxt(ctxt context.Context, reqName string) context.Context {
+	ctxt = context.WithValue(topctxt, TraceId, GenId())
 	ctxt = context.WithValue(ctxt, ReqName, reqName)
 	return ctxt
 }

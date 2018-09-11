@@ -178,7 +178,7 @@ func handleControllerPublishVolume(vid, nid string, capabiltity *csi.VolumeCapab
 }
 
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	ctxt := co.MkCtxt("controller.CreateVolume")
+	ctxt := co.WithCtxt(ctx, "controller.CreateVolume")
 	d.dc.WithContext(ctxt)
 	co.Info(ctxt, "Controller server 'CreateVolume' called")
 	co.Debugf(ctxt, "CreateVolumeRequest: %+v", *req)
@@ -265,7 +265,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	ctxt := co.MkCtxt("controller.DeleteVolume")
+	ctxt := co.WithCtxt(ctx, "controller.DeleteVolume")
 	d.dc.WithContext(ctxt)
 	co.Info(ctxt, "Controller server 'DeleteVolume' called")
 	co.Debugf(ctxt, "DeleteVolumeRequest: %+v", *req)
@@ -280,7 +280,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 }
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	ctxt := co.MkCtxt("controller.ControllerPublishVolume")
+	ctxt := co.WithCtxt(ctx, "controller.ControllerPublishVolume")
 	d.dc.WithContext(ctxt)
 	co.Info(ctxt, "Controller server 'ControllerPublishVolume' called")
 	co.Debugf(ctxt, "ControllerPublishVolumeRequest: %+v", *req)
@@ -317,6 +317,10 @@ func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
 }
 
 func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+	ctxt := co.WithCtxt(ctx, "controller.ControllerGetCapabilities")
+	d.dc.WithContext(ctxt)
+	co.Info(ctxt, "Controller server 'ControllerGetCapabilities' called")
+	co.Debugf(ctxt, "ControllerGetCapabilitiesRequest: %+v", *req)
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: []*csi.ControllerServiceCapability{
 			&csi.ControllerServiceCapability{
