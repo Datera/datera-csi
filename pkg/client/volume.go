@@ -74,6 +74,8 @@ type Volume struct {
 	FsArgs     []string
 }
 
+type VolMetadata map[string]string
+
 func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "AiToClientVol")
 	if ai == nil {
@@ -342,7 +344,7 @@ func (r *Volume) SetPerformancePolicy(volOpts *VolOpts) error {
 	return nil
 }
 
-func (r *Volume) GetMetadata() (*map[string]string, error) {
+func (r *Volume) GetMetadata() (*VolMetadata, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetMetadata")
 	co.Debugf(ctxt, "GetMetadata invoked for %s", r.Name)
 	resp, apierr, err := r.Ai.GetMetadata(&dsdk.AppInstanceMetadataGetRequest{
@@ -355,11 +357,11 @@ func (r *Volume) GetMetadata() (*map[string]string, error) {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
-	result := map[string]string(*resp)
+	result := VolMetadata(*resp)
 	return &result, nil
 }
 
-func (r *Volume) SetMetadata(metadata *map[string]string) (*map[string]string, error) {
+func (r *Volume) SetMetadata(metadata *VolMetadata) (*VolMetadata, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetMetadata")
 	co.Debugf(ctxt, "GetMetadata invoked for %s", r.Name)
 	resp, apierr, err := r.Ai.SetMetadata(&dsdk.AppInstanceMetadataSetRequest{
@@ -373,6 +375,6 @@ func (r *Volume) SetMetadata(metadata *map[string]string) (*map[string]string, e
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
-	result := map[string]string(*resp)
+	result := VolMetadata(*resp)
 	return &result, nil
 }

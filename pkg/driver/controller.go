@@ -9,6 +9,7 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	units "github.com/docker/go-units"
+	gmd "google.golang.org/grpc/metadata"
 
 	dc "github.com/Datera/datera-csi/pkg/client"
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -17,8 +18,6 @@ import (
 const (
 	DefaultSize = 16
 )
-
-type VolMetadata map[string]string
 
 func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts, error) {
 	//Golang makes something that should be simple, repetative and gross
@@ -148,7 +147,18 @@ func handleTopologyRequirement(tr *csi.TopologyRequirement) error {
 	return nil
 }
 
-func registerVolumeCapability(ctxt context.Context, md *VolMetadata, vc *csi.VolumeCapability) {
+func registerMdFromCtxt(ctxt context.Context, md *dc.VolMetadata) error {
+	gmdata, ok := gmd.FromIncomingContext(ctxt)
+	if !ok {
+		return fmt.Errorf("Error retrieving metadata from RPC")
+	}
+	for k, v := range gmdata {
+		(*md)[k] = strings.Join(v, ",")
+	}
+	return nil
+}
+
+func registerVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.VolumeCapability) {
 	// Record req.VolumeCapabilities in metadata We don't actually do anything
 	// with this information because it's all the same to us, but we should
 	// keep it for future product filtering/aggregate operations
@@ -203,12 +213,12 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, err
 	}
 
-	md := make(VolMetadata)
-	md["display-name"] = req.Name
+	md := &dc.VolMetadata{}
+	(*md)["display-name"] = req.Name
 
 	vcs := req.VolumeCapabilities
 	for _, vc := range vcs {
-		registerVolumeCapability(ctxt, &md, vc)
+		registerVolumeCapability(ctxt, md, vc)
 	}
 	// Handle req.Parameters
 	params, err := parseVolParams(ctxt, req.Parameters)
@@ -253,6 +263,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Handle req.ControllerCreateSecrets
 	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
 	// handleVolSecrets(req.ControllerCreateSecrets)
+
+	//Set metadata, fail gracefully
+	if md, err = vol.SetMetadata(md); err != nil {
+		co.Error(ctxt, err)
+	}
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
