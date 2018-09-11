@@ -76,6 +76,9 @@ type Volume struct {
 
 func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "AiToClientVol")
+	if ai == nil {
+		return nil, fmt.Errorf("Cannot construct a Client Volume from a nil AppInstance")
+	}
 	si := ai.StorageInstances[0]
 	v := si.Volumes[0]
 	inits := []string{}
