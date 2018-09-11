@@ -11,12 +11,15 @@ import (
 )
 
 type Snapshot struct {
-	Snap *dsdk.Snapshot
-	Id   string
-	Path string
+	ctxt   context.Context
+	Snap   *dsdk.Snapshot
+	Vol    *dsdk.Volume
+	Id     string
+	Path   string
+	Status string
 }
 
-func (r Volume) CreateSnapshot() (*Snapshot, error) {
+func (r *Volume) CreateSnapshot() (*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateSnapshot")
 	co.Debugf(ctxt, "CreateSnapshot invoked for %s", r.Name)
 	snap, apierr, err := r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Create(&dsdk.SnapshotsCreateRequest{
@@ -30,13 +33,16 @@ func (r Volume) CreateSnapshot() (*Snapshot, error) {
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
 	return &Snapshot{
-		Snap: snap,
-		Id:   snap.UtcTs,
-		Path: snap.Path,
+		ctxt:   r.ctxt,
+		Snap:   snap,
+		Vol:    r.Ai.StorageInstances[0].Volumes[0],
+		Id:     snap.UtcTs,
+		Path:   snap.Path,
+		Status: snap.OpState,
 	}, nil
 }
 
-func (r Volume) DeleteSnapshot(id string) error {
+func (r *Volume) DeleteSnapshot(id string) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "DeleteSnapshot")
 	co.Debugf(ctxt, "DeleteSnapshot invoked for %s", r.Name)
 	var found *dsdk.Snapshot
@@ -85,10 +91,32 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken string)
 	}
 	for _, s := range rsnaps {
 		snaps = append(snaps, &Snapshot{
-			Snap: s,
-			Id:   s.UtcTs,
-			Path: s.Path,
+			ctxt:   r.ctxt,
+			Snap:   s,
+			Vol:    r.Ai.StorageInstances[0].Volumes[0],
+			Id:     s.UtcTs,
+			Path:   s.Path,
+			Status: s.OpState,
 		})
 	}
 	return snaps, nil
+}
+
+func (s *Snapshot) Reload() error {
+	ctxt := context.WithValue(s.ctxt, co.ReqName, "Snapshot Reload")
+	co.Debug(ctxt, "Snapshot Reload invoked")
+	snap, apierr, err := s.Vol.SnapshotsEp.Get(&dsdk.SnapshotsGetRequest{
+		Ctxt:      ctxt,
+		Timestamp: s.Id,
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return fmt.Errorf("ApiError: %#v", *apierr)
+	}
+	s.Snap = snap
+	s.Status = snap.OpState
+	return nil
 }

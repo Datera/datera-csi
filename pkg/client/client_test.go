@@ -45,6 +45,19 @@ func createSnapshot(t *testing.T, client *DateraClient, vol *Volume) (*Snapshot,
 	if err != nil {
 		t.Fatal(err)
 	}
+	timeout := 10
+	for {
+		if err = snap.Reload(); err != nil {
+			t.Fatal(err)
+		}
+		if snap.Status == "available" {
+			break
+		}
+		if timeout == 0 {
+			t.Fatal(fmt.Errorf("Snapshot %s was not available within timeout", snap.Id))
+		}
+		timeout--
+	}
 	return snap, func() {
 		if err = vol.DeleteSnapshot(snap.Id); err != nil {
 			t.Fatal(err)
