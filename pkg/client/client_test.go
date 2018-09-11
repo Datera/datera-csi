@@ -40,6 +40,18 @@ func createRegisterInitiator(t *testing.T, client *DateraClient, vol *Volume) fu
 	}
 }
 
+func createSnapshot(t *testing.T, client *DateraClient, vol *Volume) (*Snapshot, func()) {
+	snap, err := vol.CreateSnapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return snap, func() {
+		if err = vol.DeleteSnapshot(snap.Id); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func getClient(t *testing.T) *DateraClient {
 	conf, err := udc.GetConfig()
 	if err != nil {
@@ -213,9 +225,34 @@ func TestCreateDeleteSnapshot(t *testing.T) {
 	}
 	_, vol, cleanv := createVolume(t, client, v)
 	defer cleanv()
-	snap, err := vol.CreateSnapshot()
+	_, cleans := createSnapshot(t, client, vol)
+	defer cleans()
+}
+
+func TestCreateFromSnapshot(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	defer cleanv()
+	snap, cleans := createSnapshot(t, client, vol)
+	defer cleans()
+
+	name := "my-test-from-snap-" + dsdk.RandString(5)
+
+	v2 := &VolOpts{
+		CloneSnapSrc: snap.Snap.Path,
+	}
+	vol, err := client.CreateVolume(name, v2, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	vol.DeleteSnapshot(snap.Id)
+	defer func() {
+		if err = client.DeleteVolume(name, true); err != nil {
+			t.Fatal(err)
+		}
+	}()
 }

@@ -13,6 +13,7 @@ import (
 type Snapshot struct {
 	Snap *dsdk.Snapshot
 	Id   string
+	Path string
 }
 
 func (r Volume) CreateSnapshot() (*Snapshot, error) {
@@ -31,6 +32,7 @@ func (r Volume) CreateSnapshot() (*Snapshot, error) {
 	return &Snapshot{
 		Snap: snap,
 		Id:   snap.UtcTs,
+		Path: snap.Path,
 	}, nil
 }
 
@@ -85,6 +87,7 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken string)
 		snaps = append(snaps, &Snapshot{
 			Snap: s,
 			Id:   s.UtcTs,
+			Path: s.Path,
 		})
 	}
 	return snaps, nil
