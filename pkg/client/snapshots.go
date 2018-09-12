@@ -3,8 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	// "strings"
-	"strconv"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
@@ -69,13 +67,13 @@ func (r *Volume) DeleteSnapshot(id string) error {
 	return nil
 }
 
-func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken string) ([]*Snapshot, error) {
+func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken int) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debug(ctxt, "ListSnapshots invoked")
 	snaps := []*Snapshot{}
-	params := map[string]string{
-		"limit":  strconv.FormatInt(int64(maxEntries), 10),
-		"offset": startToken,
+	params := dsdk.ListParams{
+		Limit:  maxEntries,
+		Offset: startToken,
 	}
 	v := r.Ai.StorageInstances[0].Volumes[0]
 	rsnaps, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
