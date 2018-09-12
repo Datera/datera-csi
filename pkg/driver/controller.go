@@ -353,7 +353,23 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 }
 
 func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	return &csi.GetCapacityResponse{}, nil
+	ctxt := d.initFunc(ctx, "controller", "GetCapacity", *req)
+	cap, err := d.dc.GetCapacity()
+	if err != nil {
+		return nil, err
+	}
+	params, err := parseVolParams(ctxt, req.Parameters)
+	if err != nil {
+		return nil, err
+	}
+	acap := int64(cap.Total)
+	if params.PlacementMode == "all_flash" {
+		acap = int64(cap.FlashTotal)
+	}
+	acap = int64(acap / int64(params.Replica))
+	return &csi.GetCapacityResponse{
+		AvailableCapacity: acap,
+	}, nil
 }
 
 func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
