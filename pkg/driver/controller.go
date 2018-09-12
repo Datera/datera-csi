@@ -188,12 +188,16 @@ func registerVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 func handleControllerPublishVolume(vid, nid string, capabiltity *csi.VolumeCapability, readOnly bool, secrets, attrs map[string]string) {
 }
 
-func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	ctxt := co.WithCtxt(ctx, "controller.CreateVolume")
+func (d *Driver) initFunc(ctx context.Context, piece, funcName string, req interface{}) context.Context {
+	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
 	d.dc.WithContext(ctxt)
-	co.Info(ctxt, "Controller server 'CreateVolume' called")
-	co.Debugf(ctxt, "CreateVolumeRequest: %+v", *req)
+	co.Infof(ctxt, "Controller server '%s' called\n", funcName)
+	co.Debugf(ctxt, "%s: %+v", funcName, req)
+	return ctxt
+}
 
+func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+	ctxt := d.initFunc(ctx, "controller", "CreateVolume", *req)
 	// Handle req.Name
 	id := co.GenName(req.Name)
 
@@ -282,10 +286,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	ctxt := co.WithCtxt(ctx, "controller.DeleteVolume")
-	d.dc.WithContext(ctxt)
-	co.Info(ctxt, "Controller server 'DeleteVolume' called")
-	co.Debugf(ctxt, "DeleteVolumeRequest: %+v", *req)
+	ctxt := d.initFunc(ctx, "controller", "DeleteVolume", *req)
 	vid := req.VolumeId
 	// Handle req.ControllerDeleteSecrets
 	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
@@ -297,10 +298,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 }
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	ctxt := co.WithCtxt(ctx, "controller.ControllerPublishVolume")
-	d.dc.WithContext(ctxt)
-	co.Info(ctxt, "Controller server 'ControllerPublishVolume' called")
-	co.Debugf(ctxt, "ControllerPublishVolumeRequest: %+v", *req)
+	d.initFunc(ctx, "controller", "ControllerPublishVolume", *req)
 	h, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -324,8 +322,25 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 }
 
 func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
+	ctxt := d.initFunc(ctx, "controller", "ListVolumes", *req)
+	vols, err := d.dc.ListVolumes(int(req.MaxEntries), req.StartingToken)
+	if err != nil {
+		co.Error(ctxt, err)
+		return nil, err
+	}
+	rvols := []*csi.ListVolumesResponse_Entry{}
+	for _, vol := range vols {
+		rvols = append(rvols, &csi.ListVolumesResponse_Entry{
+			Volume: &csi.Volume{
+				CapacityBytes: int64(vol.Size * units.GiB),
+				Id:            vol.Name,
+				Attributes:    map[string]string{},
+				ContentSource: nil,
+			},
+		})
+	}
 	return &csi.ListVolumesResponse{
-		Entries: []*csi.ListVolumesResponse_Entry{},
+		Entries: rvols,
 	}, nil
 }
 
@@ -334,10 +349,7 @@ func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
 }
 
 func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	ctxt := co.WithCtxt(ctx, "controller.ControllerGetCapabilities")
-	d.dc.WithContext(ctxt)
-	co.Info(ctxt, "Controller server 'ControllerGetCapabilities' called")
-	co.Debugf(ctxt, "ControllerGetCapabilitiesRequest: %+v", *req)
+	d.initFunc(ctx, "controller", "ControllerGetCapabilities", *req)
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: []*csi.ControllerServiceCapability{
 			&csi.ControllerServiceCapability{
