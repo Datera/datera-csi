@@ -110,7 +110,7 @@ func TestListVolumes(t *testing.T) {
 		names = append(names, name)
 		defer cleanf()
 	}
-	vols, err := client.ListVolumes(0, "0")
+	vols, err := client.ListVolumes(0, 0)
 	lv := len(vols)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestListVolumes(t *testing.T) {
 		}
 	}
 
-	vols, err = client.ListVolumes(1, "0")
+	vols, err = client.ListVolumes(1, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestVolumeMetadata(t *testing.T) {
 	}
 	_, vol, cleanf := createVolume(t, client, v)
 	defer cleanf()
-	m := map[string]string{"my-test": "metadata"}
+	m := VolMetadata{"my-test": "metadata"}
 	m2, err := vol.SetMetadata(&m)
 	if err != nil {
 		t.Fatal(err)
