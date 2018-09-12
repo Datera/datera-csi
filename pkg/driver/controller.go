@@ -323,9 +323,13 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 
 func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
 	ctxt := d.initFunc(ctx, "controller", "ListVolumes", *req)
-	st, err := strconv.ParseInt(req.StartingToken, 0, 0)
-	if err != nil {
-		return nil, err
+	var err error
+	st := int64(0)
+	if req.StartingToken != "" {
+		st, err = strconv.ParseInt(req.StartingToken, 0, 0)
+		if err != nil {
+			return nil, err
+		}
 	}
 	vols, err := d.dc.ListVolumes(int(req.MaxEntries), int(st))
 	if err != nil {
