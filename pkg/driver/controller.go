@@ -424,6 +424,9 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 
 func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	d.initFunc(ctx, "controller", "CreateSnapshot", *req)
+	if req.SourceVolumeId == "" {
+		return nil, fmt.Errorf("SourceVolumeId cannot be empty")
+	}
 	vol, err := d.dc.GetVolume(req.SourceVolumeId, false)
 	if err != nil {
 		return nil, err
