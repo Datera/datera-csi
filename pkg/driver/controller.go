@@ -439,6 +439,7 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	if err != nil {
 		return nil, err
 	}
+	//TODO Implement snapshot polling before returning
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
 			// We set the id to "<volume-id>:<snapshot-id>" since during delete requests
@@ -447,6 +448,10 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 			SourceVolumeId: vol.Name,
 			SizeBytes:      int64(vol.Size * units.GiB),
 			CreatedAt:      int64(ts),
+			Status: &csi.SnapshotStatus{
+				Type:    csi.SnapshotStatus_READY,
+				Details: snap.Status,
+			},
 		},
 	}, nil
 }
