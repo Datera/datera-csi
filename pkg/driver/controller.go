@@ -438,7 +438,9 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	}
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
-			Id:             snap.Id,
+			// We set the id to "<volume-id>:<snapshot-id>" since during delete requests
+			// we are not given the parent volume id
+			Id:             strings.Join([]string{vol.Name, snap.Id}, ":"),
 			SourceVolumeId: vol.Name,
 			SizeBytes:      int64(vol.Size * units.GiB),
 			CreatedAt:      int64(ts),
@@ -447,6 +449,15 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 }
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	parts := strings.Split(req.SnapshotId, ":")
+	vid, sid := parts[0], parts[1]
+	vol, err := d.dc.GetVolume(vid, false)
+	if err != nil {
+		return nil, err
+	}
+	if err = vol.DeleteSnapshot(sid); err != nil {
+		return nil, err
+	}
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
