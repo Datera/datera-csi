@@ -423,7 +423,27 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 }
 
 func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	return &csi.CreateSnapshotResponse{}, nil
+	d.initFunc(ctx, "controller", "CreateSnapshot", *req)
+	vol, err := d.dc.GetVolume(req.SourceVolumeId, false)
+	if err != nil {
+		return nil, err
+	}
+	snap, err := vol.CreateSnapshot()
+	if err != nil {
+		return nil, err
+	}
+	ts, err := strconv.ParseFloat(snap.Id, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			Id:             snap.Id,
+			SourceVolumeId: vol.Name,
+			SizeBytes:      int64(vol.Size * units.GiB),
+			CreatedAt:      int64(ts),
+		},
+	}, nil
 }
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
