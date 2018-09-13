@@ -83,11 +83,11 @@ func (d *Driver) Stop() {
 }
 
 func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	log.WithField("method", info.FullMethod).Infof("GRPC -- request: %+v\n", req)
+	log.WithField("method", info.FullMethod).Infof("GRPC -- request: %s -- %+v\n", info.FullMethod, req)
 	resp, err := handler(ctx, req)
-	log.WithField("method", info.FullMethod).Infof("GRPC -- response: %+v\n", resp)
+	log.WithField("method", info.FullMethod).Infof("GRPC -- response: %s -- %+v\n", info.FullMethod, resp)
 	if err != nil {
-		log.WithField("method", info.FullMethod).Infof("GRPC -- error: %+v\n", err)
+		log.WithField("method", info.FullMethod).Infof("GRPC -- error: %s -- %+v\n", info.FullMethod, err)
 	}
 	return resp, err
 }
