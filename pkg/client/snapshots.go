@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
@@ -15,6 +16,51 @@ type Snapshot struct {
 	Id     string
 	Path   string
 	Status string
+}
+
+func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
+	co.Debugf(ctxt, "ListSnapshots invoked for %s", sourceVol)
+	var err error
+	vols, snaps := []*Volume{}, []*Snapshot{}
+	if sourceVol == "" {
+		vols, err = r.ListVolumes(0, 0)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		vol, err := r.GetVolume(sourceVol, false)
+		if err != nil {
+			return nil, err
+		}
+		vols = append(vols, vol)
+	}
+	sres := make(chan *Snapshot, 100)
+	for _, vol := range vols {
+		go func() {
+			psnaps, err := vol.ListSnapshots("", 0, 0)
+			if err != nil {
+				co.Error(ctxt, err)
+				return
+			}
+			for _, snap := range psnaps {
+				sres <- snap
+			}
+		}()
+
+	}
+	for {
+		select {
+		case snap := <-sres:
+			snaps = append(snaps, snap)
+		default:
+			break
+		}
+	}
+	sort.Slice(snaps, func(i, j int) bool {
+		return snaps[i].Id < snaps[j].Id
+	})
+	return snaps[startToken : startToken+maxEntries], nil
 }
 
 func (r *Volume) CreateSnapshot() (*Snapshot, error) {
@@ -88,14 +134,16 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken int) ([
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
 	for _, s := range rsnaps {
-		snaps = append(snaps, &Snapshot{
-			ctxt:   r.ctxt,
-			Snap:   s,
-			Vol:    r.Ai.StorageInstances[0].Volumes[0],
-			Id:     s.UtcTs,
-			Path:   s.Path,
-			Status: s.OpState,
-		})
+		if snapId == "" || snapId == s.UtcTs {
+			snaps = append(snaps, &Snapshot{
+				ctxt:   r.ctxt,
+				Snap:   s,
+				Vol:    r.Ai.StorageInstances[0].Volumes[0],
+				Id:     s.UtcTs,
+				Path:   s.Path,
+				Status: s.OpState,
+			})
+		}
 	}
 	return snaps, nil
 }

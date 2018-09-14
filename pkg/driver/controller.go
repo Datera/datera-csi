@@ -444,7 +444,7 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 		Snapshot: &csi.Snapshot{
 			// We set the id to "<volume-id>:<snapshot-id>" since during delete requests
 			// we are not given the parent volume id
-			Id:             strings.Join([]string{vol.Name, snap.Id}, ":"),
+			Id:             co.MkSnapId(vol.Name, snap.Id),
 			SourceVolumeId: vol.Name,
 			SizeBytes:      int64(vol.Size * units.GiB),
 			CreatedAt:      int64(ts),
@@ -470,5 +470,34 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	return &csi.ListSnapshotsResponse{}, nil
+	rsnaps := []*csi.ListSnapshotsResponse_Entry{}
+	var err error
+	st := int64(0)
+	if req.StartingToken != "" {
+		st, err = strconv.ParseInt(req.StartingToken, 0, 0)
+		if err != nil {
+			return nil, err
+		}
+	}
+	snaps, err := d.dc.ListSnapshots(req.SourceVolumeId, int(req.MaxEntries), int(st))
+	if err != nil {
+		return nil, err
+	}
+	for _, snap := range snaps {
+		ts, err := strconv.ParseFloat(snap.Id, 64)
+		if err != nil {
+			return nil, err
+		}
+		rsnaps = append(rsnaps, &csi.ListSnapshotsResponse_Entry{
+			Snapshot: &csi.Snapshot{
+				Id:             co.MkSnapId(snap.Vol.Name, snap.Id),
+				SizeBytes:      int64(snap.Vol.Size * units.GiB),
+				SourceVolumeId: snap.Vol.Name,
+				CreatedAt:      int64(ts),
+			},
+		})
+	}
+	return &csi.ListSnapshotsResponse{
+		Entries: rsnaps,
+	}, nil
 }

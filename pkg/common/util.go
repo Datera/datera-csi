@@ -62,3 +62,12 @@ func GenName(name string) string {
 func GenId() string {
 	return uuid.Must(uuid.NewRandom()).String()
 }
+
+func MkSnapId(vol, snap string) string {
+	return strings.Join([]string{vol, snap}, ":")
+}
+
+func ParseSnapId(snapId string) (string, string) {
+	parts := strings.Split(snapId, ":")
+	return parts[0], parts[1]
+}
