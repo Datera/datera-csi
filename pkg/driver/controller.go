@@ -457,8 +457,8 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 }
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	parts := strings.Split(req.SnapshotId, ":")
-	vid, sid := parts[0], parts[1]
+	d.initFunc(ctx, "controller", "DeleteSnapshot", *req)
+	vid, sid := co.ParseSnapId(req.SnapshotId)
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
 		return nil, err
@@ -470,6 +470,7 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+	d.initFunc(ctx, "controller", "ListSnapshots", *req)
 	rsnaps := []*csi.ListSnapshotsResponse_Entry{}
 	var err error
 	st := int64(0)
