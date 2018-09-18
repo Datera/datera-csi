@@ -9,7 +9,9 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	units "github.com/docker/go-units"
+	codes "google.golang.org/grpc/codes"
 	gmd "google.golang.org/grpc/metadata"
+	status "google.golang.org/grpc/status"
 
 	dc "github.com/Datera/datera-csi/pkg/client"
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -215,7 +217,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Handle req.AccessibilityRequirements.  Currently we just error out if a topology requirement exists
 	// TODO: Digest this beast: https://github.com/container-storage-interface/spec/blob/master/lib/go/csi/v0/csi.pb.go#L1431
 	if err := handleTopologyRequirement(req.AccessibilityRequirements); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	md := &dc.VolMetadata{}
@@ -229,14 +231,14 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Handle req.Parameters
 	params, err := parseVolParams(ctxt, req.Parameters)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	// Handle req.VolumeContentSource
 	cs := req.VolumeContentSource
 	if snap := cs.GetSnapshot(); snap != nil {
 		if err = validateSnapId(snap.Id); err != nil {
-			return nil, err
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
 		params.CloneSnapSrc = snap.Id
 	}
@@ -263,7 +265,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Create AppInstance/StorageInstance/Volume
 	vol, err := d.dc.CreateVolume(id, params, true)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 
 	// Handle req.ControllerCreateSecrets
@@ -301,7 +303,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	d.initFunc(ctx, "controller", "ControllerPublishVolume", *req)
 	h, err := os.Hostname()
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	return &csi.ControllerPublishVolumeResponse{
 		PublishInfo: map[string]string{
@@ -311,6 +313,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 }
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
+	d.initFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
@@ -328,13 +331,13 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 	if req.StartingToken != "" {
 		st, err = strconv.ParseInt(req.StartingToken, 0, 0)
 		if err != nil {
-			return nil, err
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
 	}
 	vols, err := d.dc.ListVolumes(int(req.MaxEntries), int(st))
 	if err != nil {
 		co.Error(ctxt, err)
-		return nil, err
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	rvols := []*csi.ListVolumesResponse_Entry{}
 	for _, vol := range vols {
@@ -354,13 +357,13 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 
 func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	ctxt := d.initFunc(ctx, "controller", "GetCapacity", *req)
-	cap, err := d.dc.GetCapacity()
-	if err != nil {
-		return nil, err
-	}
 	params, err := parseVolParams(ctxt, req.Parameters)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	cap, err := d.dc.GetCapacity()
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	acap := int64(cap.Total)
 	if params.PlacementMode == "all_flash" {
@@ -429,15 +432,15 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	}
 	vol, err := d.dc.GetVolume(req.SourceVolumeId, false)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
 	snap, err := vol.CreateSnapshot()
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	ts, err := strconv.ParseFloat(snap.Id, 64)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 	//TODO Implement snapshot polling before returning
 	return &csi.CreateSnapshotResponse{
@@ -461,10 +464,10 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 	vid, sid := co.ParseSnapId(req.SnapshotId)
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
 	if err = vol.DeleteSnapshot(sid); err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	return &csi.DeleteSnapshotResponse{}, nil
 }
@@ -477,18 +480,18 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 	if req.StartingToken != "" {
 		st, err = strconv.ParseInt(req.StartingToken, 0, 0)
 		if err != nil {
-			return nil, err
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
 	}
 	snaps, err := d.dc.ListSnapshots(req.SourceVolumeId, int(req.MaxEntries), int(st))
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	co.Debugf(ctxt, "Recieved snapshots: %#v", snaps)
 	for _, snap := range snaps {
 		ts, err := strconv.ParseFloat(snap.Id, 64)
 		if err != nil {
-			return nil, err
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
 		rsnaps = append(rsnaps, &csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{

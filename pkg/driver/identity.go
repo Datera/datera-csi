@@ -6,6 +6,8 @@ import (
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	log "github.com/sirupsen/logrus"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 func getManifestData() map[string]string {
@@ -41,6 +43,9 @@ func (d *Driver) GetPluginCapabilities(ctxt context.Context, req *csi.GetPluginC
 
 func (d *Driver) Probe(ctxt context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
 	log.WithField("method", "probe").Info("Identity server 'Probe' called")
+	if err := d.dc.HealthCheck(); err != nil {
+		return nil, status.Errorf(codes.Unavailable, err.Error())
+	}
 	return &csi.ProbeResponse{
 		Ready: &wrappers.BoolValue{Value: true},
 	}, nil

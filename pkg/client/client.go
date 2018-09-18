@@ -36,3 +36,7 @@ func (r *DateraClient) WithContext(ctxt context.Context) context.Context {
 	r.ctxt = r.sdk.WithContext(ctxt)
 	return r.ctxt
 }
+
+func (r *DateraClient) HealthCheck() error {
+	return r.sdk.HealthCheck()
+}
