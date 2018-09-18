@@ -277,7 +277,7 @@ func (r *Volume) Delete(force bool) error {
 
 func (r DateraClient) ListVolumes(maxEntries int, startToken int) ([]*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListVolumes")
-	co.Debug(ctxt, "ListVolumes invoked")
+	co.Debug(ctxt, "ListVolumes invoked\n")
 	params := dsdk.ListParams{
 		Limit:  maxEntries,
 		Offset: startToken,

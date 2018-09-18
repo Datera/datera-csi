@@ -62,8 +62,12 @@ func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int
 	sort.Slice(snaps, func(i, j int) bool {
 		return snaps[i].Id < snaps[j].Id
 	})
-	co.Debugf(ctxt, "Returning snapshots: %#v", snaps)
-	return snaps[startToken : startToken+maxEntries], nil
+	end := startToken + maxEntries
+	if end == 0 {
+		end = len(snaps)
+	}
+	co.Debugf(ctxt, "Returning snapshots: %#v", snaps[startToken:end])
+	return snaps[startToken:end], nil
 }
 
 func (r *Volume) CreateSnapshot() (*Snapshot, error) {
