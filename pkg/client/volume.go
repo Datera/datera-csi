@@ -75,8 +75,8 @@ type Volume struct {
 
 type VolMetadata map[string]string
 
-func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, error) {
-	ctxt := context.WithValue(r.ctxt, co.ReqName, "AiToClientVol")
+func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *DateraClient) (*Volume, error) {
+	ctxt := context.WithValue(ctx, co.ReqName, "AiToClientVol")
 	if ai == nil {
 		return nil, fmt.Errorf("Cannot construct a Client Volume from a nil AppInstance")
 	}
@@ -87,7 +87,7 @@ func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, er
 		inits = append(inits, init.Name)
 	}
 	var pp map[string]int
-	if qos {
+	if qos && client != nil {
 		resp, apierr, err := v.PerformancePolicy.Get(&dsdk.PerformancePolicyGetRequest{
 			Ctxt: ctxt,
 		})
@@ -109,7 +109,7 @@ func (r DateraClient) AiToClientVol(ai *dsdk.AppInstance, qos bool) (*Volume, er
 	}
 
 	return &Volume{
-		ctxt:           r.ctxt,
+		ctxt:           ctxt,
 		Ai:             ai,
 		Name:           ai.Name,
 		AdminState:     ai.AdminState,
@@ -148,7 +148,7 @@ func (r DateraClient) GetVolume(name string, qos bool) (*Volume, error) {
 	if apierr != nil {
 		return nil, fmt.Errorf("%s", apierr.Name)
 	}
-	v, err := r.AiToClientVol(newAi, qos)
+	v, err := AiToClientVol(ctxt, newAi, qos, &r)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
-	v, err := r.AiToClientVol(newAi, false)
+	v, err := AiToClientVol(ctxt, newAi, false, &r)
 	if qos {
 		if err = v.SetPerformancePolicy(volOpts); err != nil {
 			return nil, err
@@ -235,7 +235,7 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 		Ctxt: ctxt,
 		Id:   name,
 	})
-	v, err := r.AiToClientVol(ai, false)
+	v, err := AiToClientVol(ctxt, ai, false, &r)
 	if err != nil {
 		co.Error(ctxt, err)
 		return err
@@ -295,7 +295,7 @@ func (r DateraClient) ListVolumes(maxEntries int, startToken int) ([]*Volume, er
 	}
 	vols := []*Volume{}
 	for _, ai := range resp {
-		v, err := r.AiToClientVol(ai, false)
+		v, err := AiToClientVol(ctxt, ai, false, &r)
 		if err != nil {
 			co.Error(ctxt, err)
 			continue

@@ -13,7 +13,7 @@ import (
 type Snapshot struct {
 	ctxt   context.Context
 	Snap   *dsdk.Snapshot
-	Vol    *dsdk.Volume
+	Vol    *Volume
 	Id     string
 	Path   string
 	Status string
@@ -83,10 +83,15 @@ func (r *Volume) CreateSnapshot() (*Snapshot, error) {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
+	v, err := AiToClientVol(ctxt, r.Ai, false, nil)
+	if err != nil {
+		co.Error(ctxt, err)
+		return nil, err
+	}
 	return &Snapshot{
 		ctxt:   r.ctxt,
 		Snap:   snap,
-		Vol:    r.Ai.StorageInstances[0].Volumes[0],
+		Vol:    v,
 		Id:     snap.UtcTs,
 		Path:   snap.Path,
 		Status: snap.OpState,
@@ -142,10 +147,15 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken int) ([
 	}
 	for _, s := range rsnaps {
 		if snapId == "" || snapId == s.UtcTs {
+			v, err := AiToClientVol(ctxt, r.Ai, false, nil)
+			if err != nil {
+				co.Error(ctxt, err)
+				return nil, err
+			}
 			snaps = append(snaps, &Snapshot{
 				ctxt:   r.ctxt,
 				Snap:   s,
-				Vol:    r.Ai.StorageInstances[0].Volumes[0],
+				Vol:    v,
 				Id:     s.UtcTs,
 				Path:   s.Path,
 				Status: s.OpState,
@@ -158,7 +168,7 @@ func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken int) ([
 func (s *Snapshot) Reload() error {
 	ctxt := context.WithValue(s.ctxt, co.ReqName, "Snapshot Reload")
 	co.Debug(ctxt, "Snapshot Reload invoked")
-	snap, apierr, err := s.Vol.SnapshotsEp.Get(&dsdk.SnapshotsGetRequest{
+	snap, apierr, err := s.Vol.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Get(&dsdk.SnapshotsGetRequest{
 		Ctxt:      ctxt,
 		Timestamp: s.Id,
 	})
