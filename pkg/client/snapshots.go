@@ -20,7 +20,7 @@ type Snapshot struct {
 
 func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
-	co.Debugf(ctxt, "ListSnapshots invoked for %s", sourceVol)
+	co.Debugf(ctxt, "ListSnapshots invoked for %s\n", sourceVol)
 	var err error
 	vols, snaps := []*Volume{}, []*Snapshot{}
 	if sourceVol == "" {
@@ -115,7 +115,7 @@ func (r *Volume) DeleteSnapshot(id string) error {
 
 func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken int) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
-	co.Debug(ctxt, "ListSnapshots invoked")
+	co.Debugf(ctxt, "Volume %s ListSnapshots invoked\n", r.Name)
 	snaps := []*Snapshot{}
 	params := dsdk.ListParams{
 		Limit:  maxEntries,
