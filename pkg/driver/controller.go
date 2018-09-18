@@ -470,7 +470,7 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	d.initFunc(ctx, "controller", "ListSnapshots", *req)
+	ctxt := d.initFunc(ctx, "controller", "ListSnapshots", *req)
 	rsnaps := []*csi.ListSnapshotsResponse_Entry{}
 	var err error
 	st := int64(0)
@@ -484,6 +484,7 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 	if err != nil {
 		return nil, err
 	}
+	co.Debugf(ctxt, "Recieved snapshots: %#v", snaps)
 	for _, snap := range snaps {
 		ts, err := strconv.ParseFloat(snap.Id, 64)
 		if err != nil {
@@ -498,6 +499,7 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 			},
 		})
 	}
+	co.Debugf(ctxt, "Returning snapshots: %#v", rsnaps)
 	return &csi.ListSnapshotsResponse{
 		Entries: rsnaps,
 	}, nil

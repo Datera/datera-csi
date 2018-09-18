@@ -38,28 +38,31 @@ func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int
 	}
 	wg := sync.WaitGroup{}
 	addL := sync.Mutex{}
-	addSnaps := func(lock sync.Mutex, psnaps []*Snapshot) {
+	addSnaps := func(psnaps []*Snapshot) {
 		addL.Lock()
 		defer addL.Unlock()
 		snaps = append(snaps, psnaps...)
 	}
 	for _, vol := range vols {
-		go func(w sync.WaitGroup, v *Volume) {
-			w.Add(1)
+		wg.Add(1)
+		go func(v *Volume) {
 			psnaps, err := v.ListSnapshots("", 0, 0)
 			if err != nil {
 				co.Error(ctxt, err)
+				wg.Done()
 				return
 			}
-			addSnaps(addL, psnaps)
-			w.Done()
-		}(wg, vol)
+			addSnaps(psnaps)
+			wg.Done()
+		}(vol)
 
 	}
+	co.Debug(ctxt, "Waiting")
 	wg.Wait()
 	sort.Slice(snaps, func(i, j int) bool {
 		return snaps[i].Id < snaps[j].Id
 	})
+	co.Debugf(ctxt, "Returning snapshots: %#v", snaps)
 	return snaps[startToken : startToken+maxEntries], nil
 }
 
