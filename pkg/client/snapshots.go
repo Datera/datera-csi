@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
@@ -35,28 +36,27 @@ func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int
 		}
 		vols = append(vols, vol)
 	}
-	sres := make(chan *Snapshot, 100)
+	wg := sync.WaitGroup{}
+	addL := sync.Mutex{}
+	addSnaps := func(lock sync.Mutex, psnaps []*Snapshot) {
+		addL.Lock()
+		defer addL.Unlock()
+		snaps = append(snaps, psnaps...)
+	}
 	for _, vol := range vols {
-		go func() {
-			psnaps, err := vol.ListSnapshots("", 0, 0)
+		go func(w sync.WaitGroup, v *Volume) {
+			w.Add(1)
+			psnaps, err := v.ListSnapshots("", 0, 0)
 			if err != nil {
 				co.Error(ctxt, err)
 				return
 			}
-			for _, snap := range psnaps {
-				sres <- snap
-			}
-		}()
+			addSnaps(addL, psnaps)
+			w.Done()
+		}(wg, vol)
 
 	}
-	for {
-		select {
-		case snap := <-sres:
-			snaps = append(snaps, snap)
-		default:
-			break
-		}
-	}
+	wg.Wait()
 	sort.Slice(snaps, func(i, j int) bool {
 		return snaps[i].Id < snaps[j].Id
 	})
