@@ -10,30 +10,30 @@ import (
 	status "google.golang.org/grpc/status"
 )
 
-func (d *Driver) NodeStageVolume(ctxt context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	log.WithField("method", "node_stage_volume").Infof("Node server %s 'NodeStageVolume' called", d.nid)
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (d *Driver) NodeUnstageVolume(ctxt context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
-func (d *Driver) NodePublishVolume(ctxt context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func (d *Driver) NodeUnpublishVolume(ctxt context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (d *Driver) NodeGetId(ctxt context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
+func (d *Driver) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
 	return &csi.NodeGetIdResponse{
 		NodeId: d.nid,
 	}, nil
 }
 
-func (d *Driver) NodeGetCapabilities(ctxt context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			&csi.NodeServiceCapability{
@@ -54,7 +54,8 @@ func (d *Driver) NodeGetCapabilities(ctxt context.Context, req *csi.NodeGetCapab
 	}, nil
 }
 
-func (d *Driver) NodeGetInfo(ctxt context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (d *Driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+	d.InitFunc(ctx, "node", "NodeGetInfo", *req)
 	log.WithField("method", "node_get_info").Infof("Node server %s 'NodeGetInfo' called", d.nid)
 	return &csi.NodeGetInfoResponse{
 		NodeId:             d.nid,
@@ -63,7 +64,8 @@ func (d *Driver) NodeGetInfo(ctxt context.Context, req *csi.NodeGetInfoRequest) 
 	}, nil
 }
 
-func (d *Driver) NodeGetVolumeStats(ctxt context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
 	v, err := d.dc.GetVolume(req.VolumeId, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())

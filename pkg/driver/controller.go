@@ -187,16 +187,8 @@ func registerVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	(*md)["access-mode"] = mo
 }
 
-func (d *Driver) initFunc(ctx context.Context, piece, funcName string, req interface{}) context.Context {
-	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
-	d.dc.WithContext(ctxt)
-	co.Infof(ctxt, "Controller server '%s' called\n", funcName)
-	co.Debugf(ctxt, "%s: %+v", funcName, req)
-	return ctxt
-}
-
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	ctxt := d.initFunc(ctx, "controller", "CreateVolume", *req)
+	ctxt := d.InitFunc(ctx, "controller", "CreateVolume", *req)
 	// Handle req.Name
 	id := co.GenName(req.Name)
 
@@ -285,7 +277,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	ctxt := d.initFunc(ctx, "controller", "DeleteVolume", *req)
+	ctxt := d.InitFunc(ctx, "controller", "DeleteVolume", *req)
 	vid := req.VolumeId
 	// Handle req.ControllerDeleteSecrets
 	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
@@ -297,7 +289,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 }
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	d.initFunc(ctx, "controller", "ControllerPublishVolume", *req)
+	d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
 	h, err := os.Hostname()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -310,7 +302,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 }
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	d.initFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
+	d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
@@ -322,7 +314,7 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 }
 
 func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	ctxt := d.initFunc(ctx, "controller", "ListVolumes", *req)
+	ctxt := d.InitFunc(ctx, "controller", "ListVolumes", *req)
 	var err error
 	st := int64(0)
 	if req.StartingToken != "" {
@@ -353,7 +345,7 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 }
 
 func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	ctxt := d.initFunc(ctx, "controller", "GetCapacity", *req)
+	ctxt := d.InitFunc(ctx, "controller", "GetCapacity", *req)
 	params, err := parseVolParams(ctxt, req.Parameters)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -373,7 +365,7 @@ func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
 }
 
 func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	d.initFunc(ctx, "controller", "ControllerGetCapabilities", *req)
+	d.InitFunc(ctx, "controller", "ControllerGetCapabilities", *req)
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: []*csi.ControllerServiceCapability{
 			&csi.ControllerServiceCapability{
@@ -423,7 +415,7 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 }
 
 func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	d.initFunc(ctx, "controller", "CreateSnapshot", *req)
+	d.InitFunc(ctx, "controller", "CreateSnapshot", *req)
 	if req.SourceVolumeId == "" {
 		return nil, fmt.Errorf("SourceVolumeId cannot be empty")
 	}
@@ -457,7 +449,7 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 }
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	d.initFunc(ctx, "controller", "DeleteSnapshot", *req)
+	d.InitFunc(ctx, "controller", "DeleteSnapshot", *req)
 	vid, sid := co.ParseSnapId(req.SnapshotId)
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
@@ -470,7 +462,7 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	ctxt := d.initFunc(ctx, "controller", "ListSnapshots", *req)
+	ctxt := d.InitFunc(ctx, "controller", "ListSnapshots", *req)
 	rsnaps := []*csi.ListSnapshotsResponse_Entry{}
 	var err error
 	st := int64(0)

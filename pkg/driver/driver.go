@@ -15,6 +15,8 @@ import (
 
 	client "github.com/Datera/datera-csi/pkg/client"
 	udc "github.com/Datera/go-udc/pkg/udc"
+
+	co "github.com/Datera/datera-csi/pkg/common"
 )
 
 const (
@@ -90,4 +92,12 @@ func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
 		log.WithField("method", info.FullMethod).Infof("GRPC -- error: %s -- %+v\n", info.FullMethod, err)
 	}
 	return resp, err
+}
+
+func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req interface{}) context.Context {
+	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
+	d.dc.WithContext(ctxt)
+	co.Infof(ctxt, "%s service '%s' called\n", piece, funcName)
+	co.Debugf(ctxt, "%s: %+v\n", funcName, req)
+	return ctxt
 }
