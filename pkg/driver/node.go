@@ -4,7 +4,10 @@ import (
 	"context"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
+	units "github.com/docker/go-units"
 	log "github.com/sirupsen/logrus"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 func (d *Driver) NodeStageVolume(ctxt context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -40,6 +43,13 @@ func (d *Driver) NodeGetCapabilities(ctxt context.Context, req *csi.NodeGetCapab
 					},
 				},
 			},
+			&csi.NodeServiceCapability{
+				Type: &csi.NodeServiceCapability_Rpc{
+					Rpc: &csi.NodeServiceCapability_RPC{
+						Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+					},
+				},
+			},
 		},
 	}, nil
 }
@@ -54,5 +64,19 @@ func (d *Driver) NodeGetInfo(ctxt context.Context, req *csi.NodeGetInfoRequest) 
 }
 
 func (d *Driver) NodeGetVolumeStats(ctxt context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	return nil, nil
+	v, err := d.dc.GetVolume(req.VolumeId, false)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	size, used, avail := v.GetUsage()
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			&csi.VolumeUsage{
+				Available: int64(avail * units.GiB),
+				Total:     int64(size * units.GiB),
+				Used:      int64(used * units.GiB),
+				Unit:      csi.VolumeUsage_BYTES,
+			},
+		},
+	}, nil
 }

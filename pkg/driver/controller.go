@@ -187,9 +187,6 @@ func registerVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	(*md)["access-mode"] = mo
 }
 
-func handleControllerPublishVolume(vid, nid string, capabiltity *csi.VolumeCapability, readOnly bool, secrets, attrs map[string]string) {
-}
-
 func (d *Driver) initFunc(ctx context.Context, piece, funcName string, req interface{}) context.Context {
 	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
 	d.dc.WithContext(ctxt)

@@ -377,3 +377,13 @@ func (r *Volume) SetMetadata(metadata *VolMetadata) (*VolMetadata, error) {
 	result := VolMetadata(*resp)
 	return &result, nil
 }
+
+func (r *Volume) GetUsage() (int, int, int) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetUsage")
+	co.Debugf(ctxt, "GetUsage invoked for %s", r.Name)
+	v := r.Ai.StorageInstances[0].Volumes[0]
+	size := v.Size
+	used := v.CapacityInUse
+	avail := size - used
+	return size, used, avail
+}
