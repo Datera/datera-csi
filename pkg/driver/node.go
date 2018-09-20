@@ -34,6 +34,7 @@ func (d *Driver) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi
 }
 
 func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+	d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			&csi.NodeServiceCapability{
@@ -59,7 +60,7 @@ func (d *Driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (
 	log.WithField("method", "node_get_info").Infof("Node server %s 'NodeGetInfo' called", d.nid)
 	return &csi.NodeGetInfoResponse{
 		NodeId:             d.nid,
-		MaxVolumesPerNode:  10000,
+		MaxVolumesPerNode:  int64(d.env.VolPerNode),
 		AccessibleTopology: nil,
 	}, nil
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +23,24 @@ import (
 const (
 	driverName    = "io.daterainc.csi.dsp"
 	vendorVersion = "0.1.0"
+
+	// Environment Variables
+	EnvVolPerNode = "DAT_VOL_PER_NODE"
 )
+
+type EnvVars struct {
+	VolPerNode int
+}
+
+func readEnvVars() *EnvVars {
+	vpn, err := strconv.ParseInt(os.Getenv(EnvVolPerNode), 0, 0)
+	if err != nil {
+		vpn = int64(256)
+	}
+	return &EnvVars{
+		VolPerNode: int(vpn),
+	}
+}
 
 // Driver is a single-binary implementation of:
 //   * csi.ControllerServer
@@ -31,6 +49,7 @@ const (
 type Driver struct {
 	gs  *grpc.Server
 	dc  *client.DateraClient
+	env *EnvVars
 	nid string
 
 	sock string
@@ -41,9 +60,11 @@ func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
 	if err != nil {
 		return nil, err
 	}
+	env := readEnvVars()
 	return &Driver{
 		dc:   client,
 		sock: sock,
+		env:  env,
 	}, nil
 }
 
