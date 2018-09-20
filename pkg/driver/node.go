@@ -28,6 +28,7 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 }
 
 func (d *Driver) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
+	d.InitFunc(ctx, "node", "NodeGetId", *req)
 	return &csi.NodeGetIdResponse{
 		NodeId: d.nid,
 	}, nil

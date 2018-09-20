@@ -65,6 +65,7 @@ func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
 		dc:   client,
 		sock: sock,
 		env:  env,
+		nid:  co.GetHost(),
 	}, nil
 }
 

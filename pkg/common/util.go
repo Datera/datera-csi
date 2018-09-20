@@ -24,6 +24,10 @@ func MustS(s string, err error) string {
 	return s
 }
 
+func GetHost() string {
+	return host
+}
+
 func Prettify(v interface{}) string {
 	b, _ := json.MarshalIndent(v, "", " ")
 	return string(b)
