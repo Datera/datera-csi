@@ -24,7 +24,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
-	err = vol.Login(d.env.DisableMultipath)
+	err = vol.Login(!d.env.DisableMultipath)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}

@@ -10,7 +10,7 @@ import (
 
 func (v *Volume) Login(multipath bool) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Login")
-	co.Debugf(ctxt, "Login invoked for %s", v.Name)
+	co.Debugf(ctxt, "Login invoked for %s.  Multipath: %b", v.Name, multipath)
 	var ips []string
 	if multipath {
 		ips = v.Ips
@@ -24,6 +24,7 @@ func (v *Volume) Login(multipath bool) error {
 		Lun:           0,
 		Multipath:     multipath,
 	}
+	co.Debugf(ctxt, "ISCSI Connector: %#v", c)
 	path, err := iscsi.Connect(c)
 	if err != nil {
 		co.Error(ctxt, err)
