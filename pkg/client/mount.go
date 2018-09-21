@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
@@ -25,8 +26,19 @@ func (v *Volume) Format(fsType string, fsArgs []string) error {
 
 func format(ctxt context.Context, device, fsType string, fsArgs []string) error {
 	cmd := append([]string{fmt.Sprintf("mkfs.%s", fsType), device}, fsArgs...)
-	if _, err := co.RunCmd(ctxt, cmd...); err != nil {
-		return err
+	timeout := 10
+	for {
+		if _, err := co.RunCmd(ctxt, cmd...); err != nil {
+			co.Info(ctxt, err)
+			if timeout < 0 {
+				co.Errorf(ctxt, "Could not format device %s, before timeout reached: %s", device, err.Error())
+				return err
+			}
+			timeout--
+			time.Sleep(time.Second)
+		} else {
+			break
+		}
 	}
 	return nil
 }
