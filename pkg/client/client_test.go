@@ -231,6 +231,39 @@ func TestMountUnmount(t *testing.T) {
 	}
 }
 
+func TestBindMountUnBindMount(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	cleani := createRegisterInitiator(t, client, vol)
+	defer cleani()
+	defer cleanv()
+	vol.Login(false)
+	defer vol.Logout()
+
+	if err := vol.Format("ext4", []string{}); err != nil {
+		t.Fatal(err)
+	}
+	r := dsdk.RandString(5)
+	if err := vol.Mount(fmt.Sprintf("/mnt/my-dir-%s", r), []string{}); err != nil {
+		t.Fatal(err)
+	}
+	defer vol.Unmount()
+
+	if err := vol.BindMount(fmt.Sprintf("/mnt/my-bind-dir-%s", r)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := vol.UnBindMount(fmt.Sprintf("/mnt/my-bind-dir-%s", r)); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
 func TestCreateDeleteSnapshot(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{

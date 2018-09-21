@@ -20,10 +20,13 @@ testv:
 	@echo "==> Testing the Datera CSI Driver (verbose)"
 	@sudo env "PATH=${PATH}" go test -v ../../pkg/client ../../pkg/driver
 
-testc:
-	@echo "==> Testing the Datera CSI Driver (compile only)"
-	@env go test -c ../../pkg/client ../../pkg/driver
+testcc:
+	@echo "==> Testing the Datera CSI Driver Client (compile only)"
+	@env go test -c ../../pkg/client
 
+testcd:
+	@echo "==> Testing the Datera CSI Driver (compile only)"
+	@env go test -c ../../pkg/driver
 
 clean:
 	@echo "==> Cleaning artifacts"
