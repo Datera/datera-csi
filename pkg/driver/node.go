@@ -24,12 +24,22 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
+	// Setup ACL
+	init, err := d.dc.CreateGetInitiator()
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	if err = vol.RegisterAcl(init); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	// Login to target
 	err = vol.Login(!d.env.DisableMultipath)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	// TODO: Add support for Block capability when CSI officially suports it
 	if _, ok := (*md)["fs_type"]; ok {
+		// Mount Device
 		fsType, fsArgs := (*md)["fs_type"], strings.Split((*md)["fs_args"], " ")
 		err = vol.Format(fsType, fsArgs)
 		if err != nil {
