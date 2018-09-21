@@ -73,6 +73,12 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	if _, ok := dparams["total_bandwidth_max"]; !ok {
 		dparams["total_bandwidth_max"] = "0"
 	}
+	if _, ok := dparams["fs_type"]; !ok {
+		dparams["fs_type"] = "ext4"
+	}
+	if _, ok := dparams["fs_args"]; !ok {
+		dparams["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
+	}
 
 	val, err := strconv.ParseInt(dparams["iops_per_gb"], 10, 0)
 	if err != nil {
@@ -127,6 +133,8 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 		return nil, err
 	}
 	vo.TotalBandwidthMax = int(val)
+	vo.FsType = dparams["fs_type"]
+	vo.FsArgs = strings.Split(dparams["fs_args"], " ")
 	return vo, nil
 }
 
@@ -161,32 +169,6 @@ func registerMdFromCtxt(ctxt context.Context, md *dc.VolMetadata) error {
 	return nil
 }
 
-func registerVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.VolumeCapability) {
-	// Record req.VolumeCapabilities in metadata We don't actually do anything
-	// with this information because it's all the same to us, but we should
-	// keep it for future product filtering/aggregate operations
-	var (
-		at string
-		fs string
-	)
-	mo := string(vc.GetAccessMode().Mode)
-	switch vc.GetAccessType().(type) {
-	case *csi.VolumeCapability_Block:
-		at = "block"
-	case *csi.VolumeCapability_Mount:
-		at = "mount"
-		fs = vc.GetMount().FsType + " " + strings.Join(vc.GetMount().MountFlags, "")
-		co.Debugf(ctxt, "Registering Filesystem %s", fs)
-	default:
-		at = "unknown"
-	}
-	co.Debugf(ctxt, "Registering VolumeCapability %s", at)
-	co.Debugf(ctxt, "Registering VolumeCapability %s", mo)
-	(*md)["access-type"] = at
-	(*md)["access-fs"] = fs
-	(*md)["access-mode"] = mo
-}
-
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	ctxt := d.InitFunc(ctx, "controller", "CreateVolume", *req)
 	// Handle req.Name
@@ -215,7 +197,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	vcs := req.VolumeCapabilities
 	for _, vc := range vcs {
-		registerVolumeCapability(ctxt, md, vc)
+		RegisterVolumeCapability(ctxt, md, vc)
 	}
 	// Handle req.Parameters
 	params, err := parseVolParams(ctxt, req.Parameters)

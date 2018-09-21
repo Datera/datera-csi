@@ -2,20 +2,65 @@ package driver
 
 import (
 	"context"
+	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	units "github.com/docker/go-units"
 	log "github.com/sirupsen/logrus"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+
+	dc "github.com/Datera/datera-csi/pkg/client"
+	co "github.com/Datera/datera-csi/pkg/common"
 )
 
 func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	log.WithField("method", "node_stage_volume").Infof("Node server %s 'NodeStageVolume' called", d.nid)
+	ctxt := d.InitFunc(ctx, "node", "NodeStageVolume", *req)
+	md := &dc.VolMetadata{}
+	vc := req.VolumeCapability
+	RegisterVolumeCapability(ctxt, md, vc)
+	vid := req.VolumeId
+	vol, err := d.dc.GetVolume(vid, false)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	err = vol.Login(d.env.DisableMultipath)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	// TODO: Add support for Block capability when CSI officially suports it
+	if _, ok := (*md)["fs_type"]; ok {
+		fsType, fsArgs := (*md)["fs_type"], strings.Split((*md)["fs_args"], " ")
+		err = vol.Format(fsType, fsArgs)
+		if err != nil {
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
+		err = vol.Mount(req.StagingTargetPath, []string{})
+		if err != nil {
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
+	}
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
 func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	ctxt := d.InitFunc(ctx, "node", "NodeUnstageVolume", *req)
+	vid := req.VolumeId
+	vol, err := d.dc.GetVolume(vid, false)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	// Don't return an error for failures to unmount or logout (fail gracefully)
+	// We log the errors so if something did go wrong we can track it down without bringing
+	// everything to a halt
+	err = vol.Unmount()
+	if err != nil {
+		co.Warning(ctxt, err)
+	}
+	err = vol.Logout()
+	if err != nil {
+		co.Warning(ctxt, err)
+	}
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 

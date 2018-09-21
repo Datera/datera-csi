@@ -9,12 +9,13 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	log "github.com/sirupsen/logrus"
 	grpc "google.golang.org/grpc"
 
-	client "github.com/Datera/datera-csi/pkg/client"
+	dc "github.com/Datera/datera-csi/pkg/client"
 	udc "github.com/Datera/go-udc/pkg/udc"
 
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -25,11 +26,13 @@ const (
 	vendorVersion = "0.1.0"
 
 	// Environment Variables
-	EnvVolPerNode = "DAT_VOL_PER_NODE"
+	EnvVolPerNode       = "DAT_VOL_PER_NODE"
+	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
 )
 
 type EnvVars struct {
-	VolPerNode int
+	VolPerNode       int
+	DisableMultipath bool
 }
 
 func readEnvVars() *EnvVars {
@@ -37,8 +40,13 @@ func readEnvVars() *EnvVars {
 	if err != nil {
 		vpn = int64(256)
 	}
+	var dm bool
+	if d := os.Getenv(EnvDisableMultipath); d != "" {
+		dm = true
+	}
 	return &EnvVars{
-		VolPerNode: int(vpn),
+		VolPerNode:       int(vpn),
+		DisableMultipath: dm,
 	}
 }
 
@@ -48,7 +56,7 @@ func readEnvVars() *EnvVars {
 //   * csi.NodeServer
 type Driver struct {
 	gs  *grpc.Server
-	dc  *client.DateraClient
+	dc  *dc.DateraClient
 	env *EnvVars
 	nid string
 
@@ -56,7 +64,7 @@ type Driver struct {
 }
 
 func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
-	client, err := client.NewDateraClient(udc)
+	client, err := dc.NewDateraClient(udc)
 	if err != nil {
 		return nil, err
 	}
@@ -122,4 +130,30 @@ func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req inter
 	co.Infof(ctxt, "%s service '%s' called\n", piece, funcName)
 	co.Debugf(ctxt, "%s: %+v\n", funcName, req)
 	return ctxt
+}
+
+func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.VolumeCapability) {
+	// Record req.VolumeCapabilities in metadata We don't actually do anything
+	// with this information because it's all the same to us, but we should
+	// keep it for future product filtering/aggregate operations
+	var (
+		at string
+		fs string
+	)
+	mo := string(vc.GetAccessMode().Mode)
+	switch vc.GetAccessType().(type) {
+	case *csi.VolumeCapability_Block:
+		at = "block"
+	case *csi.VolumeCapability_Mount:
+		at = "mount"
+		fs = vc.GetMount().FsType + " " + strings.Join(vc.GetMount().MountFlags, "")
+		co.Debugf(ctxt, "Registering Filesystem %s", fs)
+	default:
+		at = "unknown"
+	}
+	co.Debugf(ctxt, "Registering VolumeCapability %s", at)
+	co.Debugf(ctxt, "Registering VolumeCapability %s", mo)
+	(*md)["access-type"] = at
+	(*md)["access-fs"] = fs
+	(*md)["access-mode"] = mo
 }

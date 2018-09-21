@@ -14,7 +14,7 @@ type VolOpts struct {
 	Replica         int
 	Template        string
 	FsType          string
-	FsArgs          string
+	FsArgs          []string
 	PlacementMode   string
 	CloneSrc        string
 	CloneVolSrc     string
@@ -67,10 +67,11 @@ type Volume struct {
 	ReadBandwidthMax  int
 	TotalBandwidthMax int
 
-	DevicePath string
-	MountPath  string
-	FsType     string
-	FsArgs     []string
+	DevicePath     string
+	MountPath      string
+	BindMountPaths *dsdk.StringSet
+	FsType         string
+	FsArgs         []string
 }
 
 type VolMetadata map[string]string

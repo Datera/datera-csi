@@ -30,6 +30,7 @@ func (v *Volume) Login(multipath bool) error {
 		return err
 	}
 	v.DevicePath = path
+	co.Debugf(ctxt, "DevicePath for volume %s: %s", v.Name, v.DevicePath)
 	return nil
 }
 

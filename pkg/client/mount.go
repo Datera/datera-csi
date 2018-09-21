@@ -6,6 +6,7 @@ import (
 	"os"
 
 	co "github.com/Datera/datera-csi/pkg/common"
+	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
 
 func (v *Volume) Format(fsType string, fsArgs []string) error {
@@ -42,6 +43,38 @@ func (v *Volume) Mount(dest string, options []string) error {
 		return err
 	}
 	v.MountPath = dest
+	return nil
+}
+
+func (v *Volume) BindMount(dest string) error {
+	ctxt := context.WithValue(v.ctxt, co.ReqName, "BindMount")
+	if v.DevicePath == "" {
+		return fmt.Errorf("No device path found for volume %s.  Is the volume logged in?", v.Name)
+	} else if v.MountPath == "" {
+		return fmt.Errorf("Mount path doesn't exist for volume %s, cannot bind-mount an unmounted volume", v.Name)
+	}
+	if err := mount(ctxt, v.MountPath, dest, []string{"--bind"}); err != nil {
+		co.Error(ctxt, err)
+		return err
+	}
+	if v.BindMountPaths == nil {
+		v.BindMountPaths = dsdk.NewStringSet(10, dest)
+	} else {
+		v.BindMountPaths.Add(dest)
+	}
+	return nil
+}
+
+func (v *Volume) UnBindMount(path string) error {
+	ctxt := context.WithValue(v.ctxt, co.ReqName, "UnBindMount")
+	if v.BindMountPaths == nil || !v.BindMountPaths.Contains(path) {
+		return fmt.Errorf("Volume is already unmounted from bind path: %s", path)
+	}
+	if err := unmount(ctxt, path); err != nil {
+		co.Error(ctxt, err)
+		return err
+	}
+	v.BindMountPaths.Delete(path)
 	return nil
 }
 
