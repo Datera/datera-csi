@@ -40,10 +40,17 @@ func WithCtxt(ctxt context.Context, reqName string) context.Context {
 }
 
 func RunCmd(ctxt context.Context, cmd ...string) (string, error) {
-	Debugf(ctxt, "Running command: [%s]\n", strings.Join(cmd, " "))
-	prefix := cmd[0]
-	cmd = cmd[1:]
-	c := execCommand(prefix, cmd...)
+	ncmd := []string{}
+	for _, c := range cmd {
+		c = strings.TrimSpace(c)
+		if c != "" {
+			ncmd = append(ncmd, c)
+		}
+	}
+	Debugf(ctxt, "Running command: [%s]\n", strings.Join(ncmd, " "))
+	prefix := ncmd[0]
+	ncmd = ncmd[1:]
+	c := execCommand(prefix, ncmd...)
 	out, err := c.CombinedOutput()
 	sout := string(out)
 	Debug(ctxt, sout)
