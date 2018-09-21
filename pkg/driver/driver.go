@@ -156,4 +156,5 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	(*md)["access-type"] = at
 	(*md)["access-fs"] = fs
 	(*md)["access-mode"] = mo
+	co.Debugf(ctxt, "VolumeMetadata: %#v", *md)
 }

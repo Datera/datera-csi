@@ -10,7 +10,7 @@ import (
 
 func (v *Volume) Login(multipath bool) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Login")
-	co.Debugf(ctxt, "Login invoked for %s.  Multipath: %b", v.Name, multipath)
+	co.Debugf(ctxt, "Login invoked for %s.  Multipath: %t", v.Name, multipath)
 	var ips []string
 	if multipath {
 		ips = v.Ips
