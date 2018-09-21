@@ -38,9 +38,10 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	// TODO: Add support for Block capability when CSI officially suports it
-	if _, ok := (*md)["fs_type"]; ok {
+	if fs, ok := (*md)["access-fs"]; ok {
 		// Mount Device
-		fsType, fsArgs := (*md)["fs_type"], strings.Split((*md)["fs_args"], " ")
+		parts := strings.Split(fs, " ")
+		fsType, fsArgs := parts[0], parts[1:]
 		err = vol.Format(fsType, fsArgs)
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
