@@ -199,6 +199,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	for _, vc := range vcs {
 		RegisterVolumeCapability(ctxt, md, vc)
 	}
+	co.Debugf(ctxt, "Metadata after registering VolumeCapabilities: %#v", *md)
 	// Handle req.Parameters
 	params, err := parseVolParams(ctxt, req.Parameters)
 	if err != nil {

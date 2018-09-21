@@ -362,8 +362,8 @@ func (r *Volume) GetMetadata() (*VolMetadata, error) {
 }
 
 func (r *Volume) SetMetadata(metadata *VolMetadata) (*VolMetadata, error) {
-	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetMetadata")
-	co.Debugf(ctxt, "GetMetadata invoked for %s", r.Name)
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "SetMetadata")
+	co.Debugf(ctxt, "SetMetadata invoked for %s", r.Name)
 	resp, apierr, err := r.Ai.SetMetadata(&dsdk.AppInstanceMetadataSetRequest{
 		Ctxt:     ctxt,
 		Metadata: *metadata,

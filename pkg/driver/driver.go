@@ -140,7 +140,7 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 		at string
 		fs string
 	)
-	mo := string(vc.GetAccessMode().Mode)
+	mo := vc.GetAccessMode().Mode.String()
 	switch vc.GetAccessType().(type) {
 	case *csi.VolumeCapability_Block:
 		at = "block"
