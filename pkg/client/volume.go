@@ -109,7 +109,7 @@ func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *
 		}
 	}
 
-	return &Volume{
+	vol := &Volume{
 		ctxt:           ctxt,
 		Ai:             ai,
 		Name:           ai.Name,
@@ -133,7 +133,24 @@ func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *
 		ReadBandwidthMax:  pp["read_bandwidth_max"],
 		WriteBandwidthMax: pp["write_bandwidth_max"],
 		TotalBandwidthMax: pp["total_bandwidth_max"],
-	}, nil
+	}
+
+	md, err := vol.GetMetadata()
+	if err != nil {
+		return nil, err
+	}
+	fs := strings.Split((*md)["access-fs"], " ")
+	fsType, fsArgs := "", []string{}
+	if len(fs) >= 2 {
+		fsType = fs[0]
+		fsArgs = fs[1:]
+	}
+	vol.DevicePath = (*md)["device-path"]
+	vol.MountPath = (*md)["mount-path"]
+	vol.BindMountPaths = dsdk.NewStringSet(10, strings.Split((*md)["bind-mount-paths"], " ")...)
+	vol.FsType = fsType
+	vol.FsArgs = fsArgs
+	return vol, nil
 }
 
 func (r DateraClient) GetVolume(name string, qos bool) (*Volume, error) {
