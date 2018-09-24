@@ -433,6 +433,9 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	d.InitFunc(ctx, "controller", "DeleteSnapshot", *req)
+	if req.SnapshotId == "" {
+		return nil, status.Errorf(codes.NotFound, "SnapshotId is invalid (empty string)")
+	}
 	vid, sid := co.ParseSnapId(req.SnapshotId)
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
