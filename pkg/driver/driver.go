@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
-	log "github.com/sirupsen/logrus"
 	grpc "google.golang.org/grpc"
 
 	dc "github.com/Datera/datera-csi/pkg/client"
@@ -77,7 +76,8 @@ func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
 }
 
 func (d *Driver) Run() error {
-	log.WithField("method", "driver.Run").Infof("Starting CSI driver\n")
+	ctxt := co.WithCtxt(context.Background(), "Run")
+	co.Infof(ctxt, "Starting CSI driver\n")
 
 	u, err := url.Parse(d.sock)
 	if err != nil {
@@ -90,35 +90,37 @@ func (d *Driver) Run() error {
 	if u.Host == "" {
 		addr = filepath.FromSlash(u.Path)
 	}
-	log.Infof("Removing socket: %s\n", addr)
+	co.Infof(ctxt, "Removing socket: %s\n", addr)
 	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
-		log.Errorf("Failed to remove unix domain socket file: %s", addr)
+		co.Errorf(ctxt, "Failed to remove unix domain socket file: %s", addr)
 		return err
 	}
 	listener, err := net.Listen(u.Scheme, addr)
 	if err != nil {
-		log.Errorf("Error starting listener for address: %s", addr)
+		co.Errorf(ctxt, "Error starting listener for address: %s", addr)
 		return err
 	}
 	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServer))
 	csi.RegisterControllerServer(d.gs, d)
 	csi.RegisterIdentityServer(d.gs, d)
 	csi.RegisterNodeServer(d.gs, d)
-	log.Infof("Serving socket: %s\n", addr)
+	co.Infof(ctxt, "Datera CSI Driver Serving On Socket: %s\n", addr)
 	return d.gs.Serve(listener)
 }
 
 func (d *Driver) Stop() {
-	log.Info("Datera CSI driver stopped")
+	ctxt := co.WithCtxt(context.Background(), "Stop")
+	co.Info(ctxt, "Datera CSI driver stopped")
 	d.gs.Stop()
 }
 
 func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	log.WithField("method", info.FullMethod).Infof("GRPC -- request: %s -- %+v\n", info.FullMethod, req)
+	ctxt := co.WithCtxt(ctx, "rpc")
+	co.Infof(ctxt, "GRPC -- request: %s -- %+v\n", info.FullMethod, req)
 	resp, err := handler(ctx, req)
-	log.WithField("method", info.FullMethod).Infof("GRPC -- response: %s -- %+v\n", info.FullMethod, resp)
+	co.Infof(ctxt, "GRPC -- response: %s -- %+v\n", info.FullMethod, resp)
 	if err != nil {
-		log.WithField("method", info.FullMethod).Infof("GRPC -- error: %s -- %+v\n", info.FullMethod, err)
+		co.Errorf(ctxt, "GRPC -- error: %s -- %+v\n", info.FullMethod, err)
 	}
 	return resp, err
 }
