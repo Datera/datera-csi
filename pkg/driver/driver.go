@@ -137,11 +137,18 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	// Record req.VolumeCapabilities in metadata We don't actually do anything
 	// with this information because it's all the same to us, but we should
 	// keep it for future product filtering/aggregate operations
+	if vc == nil {
+		co.Warningf(ctxt, "VolumeCapability is nil")
+		return
+	}
 	var (
 		at string
 		fs string
+		mo string
 	)
-	mo := vc.GetAccessMode().Mode.String()
+	if vc.GetAccessMode() != nil {
+		mo = vc.GetAccessMode().Mode.String()
+	}
 	switch vc.GetAccessType().(type) {
 	case *csi.VolumeCapability_Block:
 		at = "block"
