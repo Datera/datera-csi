@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
@@ -79,6 +80,10 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if err != nil {
 		co.Warning(ctxt, err)
 	}
+	(*md)["mount"] = ""
+	if _, err = vol.SetMetadata(md); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
 	err = vol.Logout()
 	if err != nil {
 		co.Warning(ctxt, err)
@@ -87,10 +92,55 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 }
 
 func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+	ctxt := d.InitFunc(ctx, "node", "NodePublishVolume", *req)
+	if _, e := os.Stat(req.StagingTargetPath); req.StagingTargetPath == "" || os.IsNotExist(e) {
+		return nil, status.Errorf(codes.NotFound, "StagingTargetPath does not exist on this host: %s", req.StagingTargetPath)
+	}
+	vid := req.VolumeId
+	vol, err := d.dc.GetVolume(vid, false)
+	vc := req.VolumeCapability
+	md, err := vol.GetMetadata()
+	RegisterVolumeCapability(ctxt, md, vc)
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	for _, bm := range strings.Split((*md)["bind-mount"], ",") {
+		vol.BindMountPaths.Add(bm)
+	}
+	if err = vol.BindMount(req.TargetPath); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	(*md)["bind-mount"] = strings.Join(vol.BindMountPaths.List(), ",")
+	if _, err = vol.SetMetadata(md); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	err = vol.UnBindMount(req.TargetPath)
+	if err != nil {
+		co.Warning(ctxt, err)
+	}
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+	d.InitFunc(ctx, "node", "NodeUnpublishVolume", *req)
+	vid := req.VolumeId
+	vol, err := d.dc.GetVolume(vid, false)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	md, err := vol.GetMetadata()
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	for _, bm := range strings.Split((*md)["bind-mount"], ",") {
+		vol.BindMountPaths.Add(bm)
+	}
+	if _, err = vol.SetMetadata(md); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 

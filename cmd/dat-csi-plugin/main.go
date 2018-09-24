@@ -31,12 +31,12 @@ func Main() int {
 	}
 	log.Info("Using Universal Datera Config")
 	udc.PrintConfig()
-	driver, err := driver.NewDateraDriver(*endpoint, conf)
+	d, err := driver.NewDateraDriver(*endpoint, conf)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := driver.Run(); err != nil {
+	if err := d.Run(); err != nil {
 		log.Fatal(err)
 	}
 	return 0

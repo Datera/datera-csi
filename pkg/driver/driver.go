@@ -16,9 +16,8 @@ import (
 	grpc "google.golang.org/grpc"
 
 	dc "github.com/Datera/datera-csi/pkg/client"
-	udc "github.com/Datera/go-udc/pkg/udc"
-
 	co "github.com/Datera/datera-csi/pkg/common"
+	udc "github.com/Datera/go-udc/pkg/udc"
 )
 
 const (
@@ -157,4 +156,8 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	(*md)["access-fs"] = fs
 	(*md)["access-mode"] = mo
 	co.Debugf(ctxt, "VolumeMetadata: %#v", *md)
+}
+
+func GetClientForTests(d *Driver) *dc.DateraClient {
+	return d.dc
 }
