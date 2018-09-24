@@ -80,5 +80,8 @@ func MkSnapId(vol, snap string) string {
 
 func ParseSnapId(snapId string) (string, string) {
 	parts := strings.Split(snapId, ":")
+	if len(parts) != 2 {
+		return "", ""
+	}
 	return parts[0], parts[1]
 }
