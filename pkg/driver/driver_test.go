@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	endpoint = "test-csi.sock"
+	Endpoint = "unix:///tmp/test-csi.sock"
 )
 
 func getDriver(t *testing.T) *Driver {
@@ -18,7 +18,7 @@ func getDriver(t *testing.T) *Driver {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := NewDateraDriver(endpoint, conf)
+	d, err := NewDateraDriver(Endpoint, conf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestDriver(t *testing.T) {
 	sc := &sanity.Config{
 		TargetPath:  "/mnt/my-publish",
 		StagingPath: "/mnt/my-staging",
-		Address:     "test-csi.sock",
+		Address:     Endpoint,
 	}
 	sanity.Test(t, sc)
 }
