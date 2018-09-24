@@ -12,6 +12,7 @@ import (
 
 func (v *Volume) Format(fsType string, fsArgs []string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Format")
+	co.Debugf(ctxt, "Format invoked for %s", v.Name)
 	if v.FsType != "" {
 		co.Warningf(ctxt, "Volume %s already formatted: %s, %s", v.Name, v.FsType, v.FsArgs)
 		return nil
@@ -45,6 +46,7 @@ func format(ctxt context.Context, device, fsType string, fsArgs []string) error 
 
 func (v *Volume) Mount(dest string, options []string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Mount")
+	co.Debugf(ctxt, "Mount invoked for %s", v.Name)
 	if v.DevicePath == "" {
 		return fmt.Errorf("No device path found for volume %s.  Is the volume logged in?", v.Name)
 	} else if v.MountPath != "" {
@@ -60,6 +62,7 @@ func (v *Volume) Mount(dest string, options []string) error {
 
 func (v *Volume) BindMount(dest string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "BindMount")
+	co.Debugf(ctxt, "BindMount invoked for %s", v.Name)
 	if v.DevicePath == "" {
 		return fmt.Errorf("No device path found for volume %s.  Is the volume logged in?", v.Name)
 	} else if v.MountPath == "" {
@@ -79,6 +82,7 @@ func (v *Volume) BindMount(dest string) error {
 
 func (v *Volume) UnBindMount(path string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "UnBindMount")
+	co.Debugf(ctxt, "UnBindMount invoked for %s", v.Name)
 	if v.BindMountPaths == nil || !v.BindMountPaths.Contains(path) {
 		return fmt.Errorf("Volume is already unmounted from bind path: %s", path)
 	}
@@ -92,6 +96,7 @@ func (v *Volume) UnBindMount(path string) error {
 
 func (v *Volume) Unmount() error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Unmount")
+	co.Debugf(ctxt, "Unmount invoked for %s", v.Name)
 	if v.MountPath == "" {
 		return fmt.Errorf("Volume is already unmounted")
 	}
