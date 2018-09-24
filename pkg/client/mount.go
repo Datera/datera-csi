@@ -13,7 +13,7 @@ import (
 func (v *Volume) Format(fsType string, fsArgs []string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Format")
 	co.Debugf(ctxt, "Format invoked for %s", v.Name)
-	if v.FsType != "" {
+	if v.Formatted {
 		co.Warningf(ctxt, "Volume %s already formatted: %s, %s", v.Name, v.FsType, v.FsArgs)
 		return nil
 	}

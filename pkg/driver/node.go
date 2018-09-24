@@ -51,6 +51,11 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
 	}
+	vol.Formatted = true
+	(*md)["formatted"] = "true"
+	if _, err = vol.SetMetadata(md); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 

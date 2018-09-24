@@ -72,6 +72,7 @@ type Volume struct {
 	BindMountPaths *dsdk.StringSet
 	FsType         string
 	FsArgs         []string
+	Formatted      bool
 }
 
 type VolMetadata map[string]string
@@ -140,6 +141,13 @@ func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *
 		return nil, err
 	}
 	fs := strings.Split((*md)["access-fs"], " ")
+	var fm bool
+	fmj, ok := (*md)["formatted"]
+	if !ok || fmj == "false" {
+		fm = false
+	} else {
+		fm = true
+	}
 	fsType, fsArgs := "", []string{}
 	if len(fs) >= 2 {
 		fsType = fs[0]
@@ -150,6 +158,7 @@ func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *
 	vol.BindMountPaths = dsdk.NewStringSet(10, strings.Split((*md)["bind-mount-paths"], " ")...)
 	vol.FsType = fsType
 	vol.FsArgs = fsArgs
+	vol.Formatted = fm
 	return vol, nil
 }
 
@@ -234,6 +243,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
 	v, err := AiToClientVol(ctxt, newAi, false, &r)
+	v.Formatted = false
 	if qos {
 		if err = v.SetPerformancePolicy(volOpts); err != nil {
 			return nil, err
