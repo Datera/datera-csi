@@ -46,15 +46,16 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
+		vol.Formatted = true
+		(*md)["formatted"] = "true"
 		err = vol.Mount(req.StagingTargetPath, []string{})
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
-	}
-	vol.Formatted = true
-	(*md)["formatted"] = "true"
-	if _, err = vol.SetMetadata(md); err != nil {
-		return nil, status.Errorf(codes.Unknown, err.Error())
+		(*md)["mount"] = vol.MountPath
+		if _, err = vol.SetMetadata(md); err != nil {
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
 	}
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -66,6 +67,11 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
+	md, err := vol.GetMetadata()
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	vol.MountPath = (*md)["mount"]
 	// Don't return an error for failures to unmount or logout (fail gracefully)
 	// We log the errors so if something did go wrong we can track it down without bringing
 	// everything to a halt
