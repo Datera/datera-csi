@@ -206,6 +206,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
+	// Needed for testing on single-node systems
+	if d.env.ReplicaOverride {
+		params.Replica = 1
+	}
+
 	// Handle req.VolumeContentSource
 	cs := req.VolumeContentSource
 	if snap := cs.GetSnapshot(); snap != nil {

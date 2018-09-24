@@ -26,11 +26,13 @@ const (
 	// Environment Variables
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
+	EnvReplicaOverride  = "DAT_REPLICA_OVERRIDE"
 )
 
 type EnvVars struct {
 	VolPerNode       int
 	DisableMultipath bool
+	ReplicaOverride  bool
 }
 
 func readEnvVars() *EnvVars {
@@ -42,9 +44,14 @@ func readEnvVars() *EnvVars {
 	if d := os.Getenv(EnvDisableMultipath); d != "" {
 		dm = true
 	}
+	var ro bool
+	if d := os.Getenv(EnvReplicaOverride); d != "" {
+		ro = true
+	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
+		ReplicaOverride:  ro,
 	}
 }
 
