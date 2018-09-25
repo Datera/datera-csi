@@ -222,7 +222,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	// Handle req.CapacityRange
 	cr := req.CapacityRange
-	if cr != nil && cr.RequiredBytes >= cr.LimitBytes {
+	if cr != nil && cr.RequiredBytes > cr.LimitBytes {
 		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
 	}
 	var size int
