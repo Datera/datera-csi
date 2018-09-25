@@ -411,7 +411,10 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	d.InitFunc(ctx, "controller", "CreateSnapshot", *req)
 	if req.SourceVolumeId == "" {
-		return nil, fmt.Errorf("SourceVolumeId cannot be empty")
+		return nil, status.Errorf(codes.InvalidArgument, "SourceVolumeId cannot be empty")
+	}
+	if req.Name == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Name field cannot be empty")
 	}
 	vol, err := d.dc.GetVolume(req.SourceVolumeId, false)
 	if err != nil {

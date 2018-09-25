@@ -22,43 +22,59 @@ type Snapshot struct {
 func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debugf(ctxt, "ListSnapshots invoked for %s\n", sourceVol)
-	var err error
-	vols, snaps := []*Volume{}, []*Snapshot{}
-	if sourceVol == "" {
-		vols, err = r.ListVolumes(0, 0)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	var (
+		err   error
+		vid   string
+		sid   string
+		vols  = []*Volume{}
+		snaps = []*Snapshot{}
+	)
+	if snapId != "" {
+		vid, sid = co.ParseSnapId(snapId)
+	}
+	if vid != "" && sid != "" {
 		vol, err := r.GetVolume(sourceVol, false)
 		if err != nil {
 			return nil, err
 		}
-		vols = append(vols, vol)
-	}
-	wg := sync.WaitGroup{}
-	addL := sync.Mutex{}
-	addSnaps := func(psnaps []*Snapshot) {
-		addL.Lock()
-		defer addL.Unlock()
-		snaps = append(snaps, psnaps...)
-	}
-	for _, vol := range vols {
-		wg.Add(1)
-		go func(v *Volume) {
-			psnaps, err := v.ListSnapshots(snapId, 0, 0)
+		snaps, err = vol.ListSnapshots(sid, 0, 0)
+	} else {
+		if sourceVol == "" {
+			vols, err = r.ListVolumes(0, 0)
 			if err != nil {
-				co.Error(ctxt, err)
-				wg.Done()
-				return
+				return nil, err
 			}
-			addSnaps(psnaps)
-			wg.Done()
-		}(vol)
+		} else {
+			vol, err := r.GetVolume(sourceVol, false)
+			if err != nil {
+				return nil, err
+			}
+			vols = append(vols, vol)
+		}
+		wg := sync.WaitGroup{}
+		addL := sync.Mutex{}
+		addSnaps := func(psnaps []*Snapshot) {
+			addL.Lock()
+			defer addL.Unlock()
+			snaps = append(snaps, psnaps...)
+		}
+		for _, vol := range vols {
+			wg.Add(1)
+			go func(v *Volume) {
+				psnaps, err := v.ListSnapshots(sid, 0, 0)
+				if err != nil {
+					co.Error(ctxt, err)
+					wg.Done()
+					return
+				}
+				addSnaps(psnaps)
+				wg.Done()
+			}(vol)
 
+		}
+		co.Debug(ctxt, "Waiting")
+		wg.Wait()
 	}
-	co.Debug(ctxt, "Waiting")
-	wg.Wait()
 	sort.Slice(snaps, func(i, j int) bool {
 		return snaps[i].Id < snaps[j].Id
 	})
