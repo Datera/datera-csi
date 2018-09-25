@@ -19,8 +19,17 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	ctxt := d.InitFunc(ctx, "node", "NodeStageVolume", *req)
 	md := &dc.VolMetadata{}
 	vc := req.VolumeCapability
+	if vc == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
+	}
 	RegisterVolumeCapability(ctxt, md, vc)
 	vid := req.VolumeId
+	if vid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
+	if req.StagingTargetPath == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
+	}
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
@@ -64,6 +73,9 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	ctxt := d.InitFunc(ctx, "node", "NodeUnstageVolume", *req)
 	vid := req.VolumeId
+	if vid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
@@ -97,8 +109,20 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 		return nil, status.Errorf(codes.NotFound, "StagingTargetPath does not exist on this host: %s", req.StagingTargetPath)
 	}
 	vid := req.VolumeId
+	if vid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
+	if req.StagingTargetPath == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
+	}
+	if req.TargetPath == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "TargetPath cannot be empty")
+	}
 	vol, err := d.dc.GetVolume(vid, false)
 	vc := req.VolumeCapability
+	if vc == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
+	}
 	md, err := vol.GetMetadata()
 	RegisterVolumeCapability(ctxt, md, vc)
 	if err != nil {
@@ -127,6 +151,9 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	d.InitFunc(ctx, "node", "NodeUnpublishVolume", *req)
 	vid := req.VolumeId
+	if vid == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
