@@ -19,7 +19,7 @@ type Snapshot struct {
 	Status string
 }
 
-func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
+func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debugf(ctxt, "ListSnapshots invoked for %s\n", sourceVol)
 	var err error
@@ -46,7 +46,7 @@ func (r DateraClient) ListSnapshots(sourceVol string, maxEntries, startToken int
 	for _, vol := range vols {
 		wg.Add(1)
 		go func(v *Volume) {
-			psnaps, err := v.ListSnapshots("", 0, 0)
+			psnaps, err := v.ListSnapshots(snapId, 0, 0)
 			if err != nil {
 				co.Error(ctxt, err)
 				wg.Done()

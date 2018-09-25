@@ -466,7 +466,7 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
 	}
-	snaps, err := d.dc.ListSnapshots(req.SourceVolumeId, int(req.MaxEntries), int(st))
+	snaps, err := d.dc.ListSnapshots(req.SnapshotId, req.SourceVolumeId, int(req.MaxEntries), int(st))
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
