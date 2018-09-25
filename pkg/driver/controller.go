@@ -172,6 +172,9 @@ func registerMdFromCtxt(ctxt context.Context, md *dc.VolMetadata) error {
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	ctxt := d.InitFunc(ctx, "controller", "CreateVolume", *req)
 	// Handle req.Name
+	if req.Name == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Name must be provided (currently empty string)")
+	}
 	id := co.GenName(req.Name)
 
 	// Check to see if a volume already exists with this name
