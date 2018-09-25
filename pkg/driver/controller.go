@@ -199,6 +199,9 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	registerMdFromCtxt(ctxt, md)
 
 	vcs := req.VolumeCapabilities
+	if vcs == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapabilities cannot be empty")
+	}
 	for _, vc := range vcs {
 		RegisterVolumeCapability(ctxt, md, vc)
 	}
