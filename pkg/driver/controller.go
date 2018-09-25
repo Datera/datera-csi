@@ -443,20 +443,23 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 }
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	d.InitFunc(ctx, "controller", "DeleteSnapshot", *req)
+	ctxt := d.InitFunc(ctx, "controller", "DeleteSnapshot", *req)
 	if req.SnapshotId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "SnapshotId is invalid (empty string)")
 	}
 	vid, sid := co.ParseSnapId(req.SnapshotId)
 	if vid == "" || sid == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "SnapshotId is invalid (Not of the form app_instance_id:snapshot_id)")
+		co.Warningf(ctxt, "SnapshotId is invalid (Not of the form app_instance_id:snapshot_id): %s", req.SnapshotId)
+		return &csi.DeleteSnapshotResponse{}, nil
 	}
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, err.Error())
+		co.Warningf(ctxt, "VolumeId is invalid: %s", vid)
+		return &csi.DeleteSnapshotResponse{}, nil
 	}
 	if err = vol.DeleteSnapshot(sid); err != nil {
-		return nil, status.Errorf(codes.Unknown, err.Error())
+		co.Warning(ctxt, err)
+		return &csi.DeleteSnapshotResponse{}, nil
 	}
 	return &csi.DeleteSnapshotResponse{}, nil
 }

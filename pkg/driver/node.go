@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
@@ -76,6 +75,9 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
 	}
+	if req.StagingTargetPath == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
+	}
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
@@ -105,9 +107,6 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 
 func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	ctxt := d.InitFunc(ctx, "node", "NodePublishVolume", *req)
-	if _, e := os.Stat(req.StagingTargetPath); req.StagingTargetPath == "" || os.IsNotExist(e) {
-		return nil, status.Errorf(codes.NotFound, "StagingTargetPath does not exist on this host: %s", req.StagingTargetPath)
-	}
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -153,6 +152,9 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
+	if req.TargetPath == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "TargetPath cannot be empty")
 	}
 	vol, err := d.dc.GetVolume(vid, false)
 	if err != nil {
