@@ -177,9 +177,13 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 	id := co.GenName(req.Name)
 
+	cr := req.CapacityRange
+	if cr != nil && cr.LimitBytes == 0 {
+		cr.LimitBytes = cr.RequiredBytes
+	}
+
 	// Check to see if a volume already exists with this name
 	if vol, err := d.dc.GetVolume(id, false); err == nil {
-		cr := req.CapacityRange
 		size := int64(vol.Size * units.GiB)
 		if cr != nil && (cr.LimitBytes < size || cr.RequiredBytes > size) {
 			return nil, status.Errorf(codes.InvalidArgument, "Requested volume exists, but has a different size")
@@ -232,10 +236,6 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	// Handle req.CapacityRange
-	cr := req.CapacityRange
-	if cr != nil && cr.LimitBytes == 0 {
-		cr.LimitBytes = cr.RequiredBytes
-	}
 	if cr != nil && cr.RequiredBytes > cr.LimitBytes {
 		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
 	}
