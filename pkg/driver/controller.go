@@ -185,7 +185,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Check to see if a volume already exists with this name
 	if vol, err := d.dc.GetVolume(id, false); err == nil {
 		size := int64(vol.Size * units.GiB)
-		if cr != nil && (cr.LimitBytes < size || cr.RequiredBytes > size) {
+		if cr != nil && (cr.LimitBytes < size || cr.RequiredBytes != size) {
 			return nil, status.Errorf(codes.InvalidArgument, "Requested volume exists, but has a different size")
 		}
 		return &csi.CreateVolumeResponse{
@@ -295,6 +295,26 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
+	if req.VolumeId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
+	if req.VolumeCapability == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
+	}
+	if req.NodeId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "NodeId cannot be empty")
+	}
+	am := req.VolumeCapability.GetAccessMode()
+	if am != nil {
+		mo := am.Mode.String()
+		if strings.Contains(mo, "WRITER") && req.Readonly {
+			return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
+		}
+	}
+	_, err := d.dc.GetVolume(req.VolumeId, false)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
 	h, err := os.Hostname()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
