@@ -181,7 +181,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	if vol, err := d.dc.GetVolume(id, false); err == nil {
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
-				CapacityBytes: int64(vol.Size),
+				CapacityBytes: int64(vol.Size * units.GiB),
 				Id:            vol.Name,
 				Attributes:    map[string]string{},
 			},
@@ -265,7 +265,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			CapacityBytes: int64(size),
+			CapacityBytes: int64(size * units.GiB),
 			Id:            vol.Name,
 			Attributes:    map[string]string{},
 			ContentSource: nil,
