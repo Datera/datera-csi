@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strings"
 
-	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	uuid "github.com/google/uuid"
 )
 
@@ -61,13 +60,13 @@ func GenName(name string) string {
 	if name == "" {
 		name = GenId()
 	}
-	// Truncate display name to 30 characters
-	if len(name) > 30 {
+	// Truncate display name to 58 characters
+	maxL := 58
+	if len(name) > maxL {
 		rns := []rune(name)
-		name = string(rns[:30])
+		name = string(rns[:maxL])
 	}
-	rlen := 63 - (30 + 5)
-	return strings.Join([]string{"CSI", name, dsdk.RandString(rlen)}, "-")
+	return strings.Join([]string{"CSI", name}, "-")
 }
 
 func GenId() string {

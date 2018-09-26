@@ -228,6 +228,9 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	// Handle req.CapacityRange
 	cr := req.CapacityRange
+	if cr != nil && cr.LimitBytes == 0 {
+		cr.LimitBytes = cr.RequiredBytes
+	}
 	if cr != nil && cr.RequiredBytes > cr.LimitBytes {
 		return &csi.CreateVolumeResponse{}, fmt.Errorf("RequiredBytes must be less than or equal to LimitBytes: [%d, %d]", cr.RequiredBytes, cr.LimitBytes)
 	}
@@ -479,7 +482,11 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 		}
 	}
 	snaps, err := d.dc.ListSnapshots(req.SnapshotId, req.SourceVolumeId, int(req.MaxEntries), int(st))
-	if err != nil {
+	if err != nil && req.SourceVolumeId != "" && strings.Contains(err.Error(), "NotFound") {
+		return &csi.ListSnapshotsResponse{
+			Entries: []*csi.ListSnapshotsResponse_Entry{},
+		}, nil
+	} else if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	co.Debugf(ctxt, "Recieved snapshots: %#v", snaps)
