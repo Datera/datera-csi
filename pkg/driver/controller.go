@@ -308,7 +308,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 	if am != nil {
 		mo := am.Mode.String()
 		if strings.Contains(mo, "WRITER") && req.Readonly {
-			return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
+			return nil, status.Errorf(codes.AlreadyExists, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
 		}
 	}
 	_, err := d.dc.GetVolume(req.VolumeId, false)
@@ -328,6 +328,9 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
+	if req.VolumeId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
@@ -409,13 +412,13 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 					},
 				},
 			},
-			&csi.ControllerServiceCapability{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
-					},
-				},
-			},
+			// &csi.ControllerServiceCapability{
+			// 	Type: &csi.ControllerServiceCapability_Rpc{
+			// 		Rpc: &csi.ControllerServiceCapability_RPC{
+			// 			Type: csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+			// 		},
+			// 	},
+			// },
 			&csi.ControllerServiceCapability{
 				Type: &csi.ControllerServiceCapability_Rpc{
 					Rpc: &csi.ControllerServiceCapability_RPC{
