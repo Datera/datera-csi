@@ -179,9 +179,14 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 
 	// Check to see if a volume already exists with this name
 	if vol, err := d.dc.GetVolume(id, false); err == nil {
+		cr := req.CapacityRange
+		size := int64(vol.Size * units.GiB)
+		if cr != nil && (cr.LimitBytes < size || cr.RequiredBytes > size) {
+			return nil, status.Errorf(codes.InvalidArgument, "Requested volume exists, but has a different size")
+		}
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
-				CapacityBytes: int64(vol.Size * units.GiB),
+				CapacityBytes: size,
 				Id:            vol.Name,
 				Attributes:    map[string]string{},
 			},
@@ -276,6 +281,9 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	ctxt := d.InitFunc(ctx, "controller", "DeleteVolume", *req)
 	vid := req.VolumeId
+	if req.VolumeId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
 	// Handle req.ControllerDeleteSecrets
 	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
 	// sec := req.ControllerDeleteSecrets
@@ -304,6 +312,15 @@ func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.Control
 }
 
 func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	if req.VolumeId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	}
+	if req.VolumeCapabilities == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapabilities cannot be nil")
+	}
+	if _, err := d.dc.GetVolume(req.VolumeId, false); err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Supported: true,
 		Message:   "",
