@@ -295,6 +295,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
+	return nil, status.Errorf(codes.Unimplemented, "ControllerPublishVolume Not Implemented")
 	if req.VolumeId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
 	}
@@ -328,6 +329,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
+	return nil, status.Errorf(codes.Unimplemented, "ControllerUnPublishVolume Not Implemented")
 	if req.VolumeId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
 	}
