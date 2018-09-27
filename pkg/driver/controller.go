@@ -523,7 +523,7 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
 	}
-	snaps, err := d.dc.ListSnapshots(req.SnapshotId, req.SourceVolumeId, int(req.MaxEntries), int(st))
+	snaps, nextToken, err := d.dc.ListSnapshots(req.SnapshotId, req.SourceVolumeId, int(req.MaxEntries), int(st))
 	if err != nil && req.SourceVolumeId != "" && strings.Contains(err.Error(), "NotFound") {
 		return &csi.ListSnapshotsResponse{
 			Entries: []*csi.ListSnapshotsResponse_Entry{},
@@ -546,8 +546,13 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 			},
 		})
 	}
+	nt := ""
+	if nextToken != 0 {
+		nt = strconv.FormatInt(int64(nextToken), 10)
+	}
 	co.Debugf(ctxt, "Returning snapshots: %#v", rsnaps)
 	return &csi.ListSnapshotsResponse{
-		Entries: rsnaps,
+		Entries:   rsnaps,
+		NextToken: nt,
 	}, nil
 }
