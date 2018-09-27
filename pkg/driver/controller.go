@@ -183,7 +183,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	// Check to see if a volume already exists with this name
-	if vol, err := d.dc.GetVolume(id, false); err == nil {
+	if vol, err := d.dc.GetVolume(id, false, false); err == nil {
 		size := int64(vol.Size * units.GiB)
 		if cr != nil && (cr.LimitBytes < size || cr.RequiredBytes != size) {
 			return nil, status.Errorf(codes.AlreadyExists, "Requested volume exists, but has a different size")
@@ -312,7 +312,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 			return nil, status.Errorf(codes.AlreadyExists, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
 		}
 	}
-	_, err := d.dc.GetVolume(req.VolumeId, false)
+	_, err := d.dc.GetVolume(req.VolumeId, false, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
@@ -343,7 +343,7 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 	if req.VolumeCapabilities == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapabilities cannot be nil")
 	}
-	if _, err := d.dc.GetVolume(req.VolumeId, false); err != nil {
+	if _, err := d.dc.GetVolume(req.VolumeId, false, false); err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
 	return &csi.ValidateVolumeCapabilitiesResponse{
@@ -461,7 +461,7 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	if req.Name == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Name field cannot be empty")
 	}
-	vol, err := d.dc.GetVolume(req.SourceVolumeId, false)
+	vol, err := d.dc.GetVolume(req.SourceVolumeId, false, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
@@ -500,7 +500,7 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 		co.Warningf(ctxt, "SnapshotId is invalid (Not of the form app_instance_id:snapshot_id): %s", req.SnapshotId)
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
-	vol, err := d.dc.GetVolume(vid, false)
+	vol, err := d.dc.GetVolume(vid, false, false)
 	if err != nil {
 		co.Warningf(ctxt, "VolumeId is invalid: %s", vid)
 		return &csi.DeleteSnapshotResponse{}, nil

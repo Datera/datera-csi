@@ -60,7 +60,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	}
 
 	if vid != "" && sid != "" {
-		vol, err := r.GetVolume(vid, false)
+		vol, err := r.GetVolume(vid, false, false)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -72,7 +72,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 				return nil, 0, err
 			}
 		} else {
-			vol, err := r.GetVolume(sourceVol, false)
+			vol, err := r.GetVolume(sourceVol, false, false)
 			if err != nil {
 				return nil, 0, err
 			}
@@ -158,7 +158,7 @@ func (r *Volume) GetSnapshotByUuid(id *uuid.UUID) (*Snapshot, error) {
 	}
 	for _, snap := range snaps {
 		if snap.Uuid == id.String() {
-			v, err := AiToClientVol(ctxt, r.Ai, false, nil)
+			v, err := AiToClientVol(ctxt, r.Ai, false, false, nil)
 			if err != nil {
 				co.Error(ctxt, err)
 				return nil, err
@@ -196,7 +196,7 @@ func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 		co.Error(ctxt, err)
 		return nil, err
 	}
-	v, err := AiToClientVol(ctxt, r.Ai, false, nil)
+	v, err := AiToClientVol(ctxt, r.Ai, false, false, nil)
 	if err != nil {
 		co.Error(ctxt, err)
 		return nil, err
@@ -255,7 +255,7 @@ func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 	}
 	for _, s := range rsnaps {
 		if snapId == "" || snapId == s.UtcTs {
-			v, err := AiToClientVol(ctxt, r.Ai, false, nil)
+			v, err := AiToClientVol(ctxt, r.Ai, false, false, nil)
 			if err != nil {
 				co.Error(ctxt, err)
 				return nil, err

@@ -77,7 +77,7 @@ type Volume struct {
 
 type VolMetadata map[string]string
 
-func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *DateraClient) (*Volume, error) {
+func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool, client *DateraClient) (*Volume, error) {
 	ctxt := context.WithValue(ctx, co.ReqName, "AiToClientVol")
 	if ai == nil {
 		return nil, fmt.Errorf("Cannot construct a Client Volume from a nil AppInstance")
@@ -136,33 +136,35 @@ func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *
 		TotalBandwidthMax: pp["total_bandwidth_max"],
 	}
 
-	md, err := vol.GetMetadata()
-	if err != nil {
-		return nil, err
+	if metadata {
+		md, err := vol.GetMetadata()
+		if err != nil {
+			return nil, err
+		}
+		fs := strings.Split((*md)["access-fs"], " ")
+		var fm bool
+		fmj, ok := (*md)["formatted"]
+		if !ok || fmj == "false" {
+			fm = false
+		} else {
+			fm = true
+		}
+		fsType, fsArgs := "", []string{}
+		if len(fs) >= 2 {
+			fsType = fs[0]
+			fsArgs = fs[1:]
+		}
+		vol.DevicePath = (*md)["device-path"]
+		vol.MountPath = (*md)["mount-path"]
+		vol.BindMountPaths = dsdk.NewStringSet(10, strings.Split((*md)["bind-mount-paths"], " ")...)
+		vol.FsType = fsType
+		vol.FsArgs = fsArgs
+		vol.Formatted = fm
 	}
-	fs := strings.Split((*md)["access-fs"], " ")
-	var fm bool
-	fmj, ok := (*md)["formatted"]
-	if !ok || fmj == "false" {
-		fm = false
-	} else {
-		fm = true
-	}
-	fsType, fsArgs := "", []string{}
-	if len(fs) >= 2 {
-		fsType = fs[0]
-		fsArgs = fs[1:]
-	}
-	vol.DevicePath = (*md)["device-path"]
-	vol.MountPath = (*md)["mount-path"]
-	vol.BindMountPaths = dsdk.NewStringSet(10, strings.Split((*md)["bind-mount-paths"], " ")...)
-	vol.FsType = fsType
-	vol.FsArgs = fsArgs
-	vol.Formatted = fm
 	return vol, nil
 }
 
-func (r DateraClient) GetVolume(name string, qos bool) (*Volume, error) {
+func (r DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetVolume")
 	co.Debugf(ctxt, "GetVolume invoked for %s", name)
 	if name == "" {
@@ -178,7 +180,7 @@ func (r DateraClient) GetVolume(name string, qos bool) (*Volume, error) {
 	if apierr != nil {
 		return nil, fmt.Errorf("%s", apierr.Name)
 	}
-	v, err := AiToClientVol(ctxt, newAi, qos, &r)
+	v, err := AiToClientVol(ctxt, newAi, qos, metadata, &r)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +247,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
-	v, err := AiToClientVol(ctxt, newAi, false, &r)
+	v, err := AiToClientVol(ctxt, newAi, false, false, &r)
 	v.Formatted = false
 	if qos {
 		if err = v.SetPerformancePolicy(volOpts); err != nil {
@@ -266,7 +268,7 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 		Ctxt: ctxt,
 		Id:   name,
 	})
-	v, err := AiToClientVol(ctxt, ai, false, &r)
+	v, err := AiToClientVol(ctxt, ai, false, false, &r)
 	if err != nil {
 		co.Error(ctxt, err)
 		return err
@@ -326,7 +328,7 @@ func (r DateraClient) ListVolumes(maxEntries int, startToken int) ([]*Volume, er
 	}
 	vols := []*Volume{}
 	for _, ai := range resp {
-		v, err := AiToClientVol(ctxt, ai, false, &r)
+		v, err := AiToClientVol(ctxt, ai, false, false, &r)
 		if err != nil {
 			co.Error(ctxt, err)
 			continue

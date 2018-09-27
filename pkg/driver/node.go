@@ -29,7 +29,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if req.StagingTargetPath == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
 	}
-	vol, err := d.dc.GetVolume(vid, false)
+	vol, err := d.dc.GetVolume(vid, false, true)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
@@ -83,7 +83,7 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if req.StagingTargetPath == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
 	}
-	vol, err := d.dc.GetVolume(vid, false)
+	vol, err := d.dc.GetVolume(vid, false, true)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
@@ -118,7 +118,7 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 	if req.TargetPath == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "TargetPath cannot be empty")
 	}
-	vol, err := d.dc.GetVolume(vid, false)
+	vol, err := d.dc.GetVolume(vid, false, true)
 	vc := req.VolumeCapability
 	if vc == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
@@ -157,7 +157,7 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 	if req.TargetPath == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "TargetPath cannot be empty")
 	}
-	vol, err := d.dc.GetVolume(vid, false)
+	vol, err := d.dc.GetVolume(vid, false, true)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
@@ -215,7 +215,7 @@ func (d *Driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (
 
 func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
-	v, err := d.dc.GetVolume(req.VolumeId, false)
+	v, err := d.dc.GetVolume(req.VolumeId, false, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
