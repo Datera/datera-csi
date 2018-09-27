@@ -51,9 +51,16 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	)
 	if snapId != "" {
 		vid, sid = co.ParseSnapId(snapId)
+		if vid == "" || sid == "" {
+			return []*Snapshot{}, 0, fmt.Errorf("SnapshotId must be of format app_instance_name:snapshot_timestamp")
+		}
+		if sourceVol == "" {
+			sourceVol = vid
+		}
 	}
-	if vid != "" && sid != "" && sourceVol != "" {
-		vol, err := r.GetVolume(sourceVol, false)
+
+	if vid != "" && sid != "" {
+		vol, err := r.GetVolume(vid, false)
 		if err != nil {
 			return nil, 0, err
 		}

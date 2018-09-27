@@ -528,6 +528,10 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 		return &csi.ListSnapshotsResponse{
 			Entries: []*csi.ListSnapshotsResponse_Entry{},
 		}, nil
+	} else if err != nil && strings.Contains(err.Error(), "must be of format") {
+		return &csi.ListSnapshotsResponse{
+			Entries: rsnaps,
+		}, nil
 	} else if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
