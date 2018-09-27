@@ -105,10 +105,40 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	sort.Slice(snaps, func(i, j int) bool {
 		return snaps[i].Id < snaps[j].Id
 	})
+	if len(snaps) == 0 {
+		return snaps, 0, nil
+	}
+	snapEnd := len(snaps)
+	if maxEntries == 0 {
+		maxEntries = snapEnd - startToken
+	}
 	end := startToken + maxEntries
 	if end == 0 {
-		end = len(snaps)
+		end = snapEnd
 	}
+	// startToken = 0, maxEntries = len(snap) --> end = 6
+	//
+	//
+	// [0, 1, 2, 3, 4, 5]
+	//  |              |
+	//  st             end
+	//
+
+	// startToken = 3, maxEntries = 0 -- > end = 6
+	//
+	// [0, 1, 2, 3, 4, 5]
+	//           |     |
+	//           st    end
+	//
+
+	// startToken = 2, maxEntries = 2 -- > end = 4
+	//
+	// [0, 1, 2, 3, 4, 5]
+	//        |  |
+	//        st end
+	//
+	co.Debugf(ctxt, "startToken = %d, maxEntries = %d, end = %d", startToken, maxEntries, end)
+	co.Debugf(ctxt, "Found snapshots: %#v", snaps)
 	co.Debugf(ctxt, "Returning snapshots: %#v", snaps[startToken:end])
 	return snaps[startToken:end], end, nil
 }
