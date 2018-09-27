@@ -186,7 +186,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	if vol, err := d.dc.GetVolume(id, false); err == nil {
 		size := int64(vol.Size * units.GiB)
 		if cr != nil && (cr.LimitBytes < size || cr.RequiredBytes != size) {
-			return nil, status.Errorf(codes.InvalidArgument, "Requested volume exists, but has a different size")
+			return nil, status.Errorf(codes.AlreadyExists, "Requested volume exists, but has a different size")
 		}
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
