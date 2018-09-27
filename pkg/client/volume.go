@@ -165,6 +165,9 @@ func AiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos bool, client *
 func (r DateraClient) GetVolume(name string, qos bool) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetVolume")
 	co.Debugf(ctxt, "GetVolume invoked for %s", name)
+	if name == "" {
+		return nil, fmt.Errorf("Volume name cannot be an empty string")
+	}
 	newAi, apierr, err := r.sdk.AppInstances.Get(&dsdk.AppInstancesGetRequest{
 		Ctxt: ctxt,
 		Id:   name,

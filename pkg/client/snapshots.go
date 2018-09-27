@@ -41,7 +41,7 @@ func snapIdFromName(ctxt context.Context, name string) *uuid.UUID {
 
 func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
-	co.Debugf(ctxt, "ListSnapshots invoked for %s\n", sourceVol)
+	co.Debugf(ctxt, "ListSnapshots invoked.  snapId = %s, sourceVol = %s, maxEntries = %d, startToken = %d\n", snapId, sourceVol, maxEntries, startToken)
 	var (
 		err   error
 		vid   string
@@ -52,7 +52,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	if snapId != "" {
 		vid, sid = co.ParseSnapId(snapId)
 	}
-	if vid != "" && sid != "" {
+	if vid != "" && sid != "" && sourceVol != "" {
 		vol, err := r.GetVolume(sourceVol, false)
 		if err != nil {
 			return nil, err
