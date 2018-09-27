@@ -64,7 +64,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 		if err != nil {
 			return nil, 0, err
 		}
-		snaps, err = vol.ListSnapshots(sid, 0, 0)
+		snaps, err = vol.ListSnapshots(sid)
 	} else {
 		if sourceVol == "" {
 			vols, err = r.ListVolumes(0, 0)
@@ -88,7 +88,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 		for _, vol := range vols {
 			wg.Add(1)
 			go func(v *Volume) {
-				psnaps, err := v.ListSnapshots(sid, 0, 0)
+				psnaps, err := v.ListSnapshots(sid)
 				if err != nil {
 					co.Error(ctxt, err)
 					wg.Done()
@@ -208,18 +208,13 @@ func (r *Volume) DeleteSnapshot(id string) error {
 	return nil
 }
 
-func (r *Volume) ListSnapshots(snapId string, maxEntries int, startToken int) ([]*Snapshot, error) {
+func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debugf(ctxt, "Volume %s ListSnapshots invoked\n", r.Name)
 	snaps := []*Snapshot{}
-	params := dsdk.ListParams{
-		Limit:  maxEntries,
-		Offset: startToken,
-	}
 	v := r.Ai.StorageInstances[0].Volumes[0]
 	rsnaps, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
-		Ctxt:   ctxt,
-		Params: params,
+		Ctxt: ctxt,
 	})
 	if err != nil {
 		co.Error(ctxt, err)
