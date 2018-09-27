@@ -6,9 +6,15 @@ import (
 	"sort"
 	"sync"
 
+	uuid "github.com/google/uuid"
+
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
+
+const SnapDomainStr = "7079EAEC-2660-4A35-9A48-9C47204C01A9"
+
+var SnapDomain *uuid.UUID
 
 type Snapshot struct {
 	ctxt   context.Context
@@ -17,6 +23,20 @@ type Snapshot struct {
 	Id     string
 	Path   string
 	Status string
+}
+
+func initSnapDomain() *uuid.UUID {
+	sd, err := uuid.Parse(SnapDomainStr)
+	if err != nil {
+		panic(err)
+	}
+	return &sd
+}
+
+func snapIdFromName(ctxt context.Context, name string) *uuid.UUID {
+	sid := uuid.NewSHA1(*SnapDomain, []byte(name))
+	co.Debugf(ctxt, "Generating Snapshot Id %s from name %s", sid.String(), name)
+	return &sid
 }
 
 func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, error) {
@@ -86,11 +106,13 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	return snaps[startToken:end], nil
 }
 
-func (r *Volume) CreateSnapshot() (*Snapshot, error) {
+func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateSnapshot")
 	co.Debugf(ctxt, "CreateSnapshot invoked for %s", r.Name)
+	sid := snapIdFromName(ctxt, name)
 	snap, apierr, err := r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Create(&dsdk.SnapshotsCreateRequest{
 		Ctxt: ctxt,
+		Uuid: sid.String(),
 	})
 	if err != nil {
 		co.Error(ctxt, err)
@@ -198,4 +220,8 @@ func (s *Snapshot) Reload() error {
 	s.Snap = snap
 	s.Status = snap.OpState
 	return nil
+}
+
+func init() {
+	SnapDomain = initSnapDomain()
 }
