@@ -466,9 +466,7 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
 	snap, err := vol.CreateSnapshot(req.Name)
-	if err != nil && strings.Contains(err.Error(), "use a different UUID") {
-		return nil, status.Errorf(codes.AlreadyExists, err.Error())
-	} else if err != nil {
+	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	ts, err := strconv.ParseFloat(snap.Id, 64)

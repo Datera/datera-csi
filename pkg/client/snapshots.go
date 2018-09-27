@@ -106,6 +106,40 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	return snaps[startToken:end], nil
 }
 
+func (r *Volume) GetSnapshotByUuid(id *uuid.UUID) (*Snapshot, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetSnapshotByUuid")
+	co.Debugf(ctxt, "GetSnapshotByUuid invoked for %s", r.Name)
+	snaps, apierr, err := r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.List(&dsdk.SnapshotsListRequest{
+		Ctxt: ctxt,
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return nil, err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return nil, fmt.Errorf("ApiError: %#v", *apierr)
+	}
+	for _, snap := range snaps {
+		if snap.Uuid == id.String() {
+			v, err := AiToClientVol(ctxt, r.Ai, false, nil)
+			if err != nil {
+				co.Error(ctxt, err)
+				return nil, err
+			}
+			return &Snapshot{
+				ctxt:   r.ctxt,
+				Snap:   snap,
+				Vol:    v,
+				Id:     snap.UtcTs,
+				Path:   snap.Path,
+				Status: snap.OpState,
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("No snapshot found with UUID %s", id.String())
+
+}
+
 func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateSnapshot")
 	co.Debugf(ctxt, "CreateSnapshot invoked for %s", r.Name)
@@ -114,12 +148,16 @@ func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 		Ctxt: ctxt,
 		Uuid: sid.String(),
 	})
-	if err != nil {
+	if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		// Duplicate found
+		if apierr.Name == "InvalidRequestError" && apierr.Code == 15 {
+			return r.GetSnapshotByUuid(sid)
+		}
+		return nil, fmt.Errorf("ApiError: %#v", *apierr)
+	} else if err != nil {
 		co.Error(ctxt, err)
 		return nil, err
-	} else if apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return nil, fmt.Errorf("ApiError: %#v", *apierr)
 	}
 	v, err := AiToClientVol(ctxt, r.Ai, false, nil)
 	if err != nil {
