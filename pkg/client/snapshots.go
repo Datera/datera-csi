@@ -105,7 +105,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 	sort.Slice(snaps, func(i, j int) bool {
 		return snaps[i].Id < snaps[j].Id
 	})
-	if len(snaps) == 0 {
+	if len(snaps) == 0 || startToken > len(snaps) {
 		return snaps, 0, nil
 	}
 	snapEnd := len(snaps)
@@ -113,7 +113,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 		maxEntries = snapEnd - startToken
 	}
 	end := startToken + maxEntries
-	if end == 0 {
+	if end == 0 || end > snapEnd {
 		end = snapEnd
 	}
 	// startToken = 0, maxEntries = len(snap) --> end = 6
