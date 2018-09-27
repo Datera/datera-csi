@@ -46,6 +46,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
+	(*md)["device-path"] = vol.DevicePath
 	// TODO: Add support for Block capability when CSI officially suports it
 	if fs, ok := (*md)["access-fs"]; ok {
 		// Mount Device
@@ -54,6 +55,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		if fsType == "" {
 			fsType = "ext4"
 		}
+		(*md)["access-fs"] = "ext4"
 		err = vol.Format(fsType, fsArgs)
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
@@ -64,7 +66,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
-		(*md)["mount"] = vol.MountPath
+		(*md)["mount-path"] = vol.MountPath
 		if _, err = vol.SetMetadata(md); err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
@@ -85,11 +87,6 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
-	md, err := vol.GetMetadata()
-	if err != nil {
-		return nil, status.Errorf(codes.Unknown, err.Error())
-	}
-	vol.MountPath = (*md)["mount"]
 	// Don't return an error for failures to unmount or logout (fail gracefully)
 	// We log the errors so if something did go wrong we can track it down without bringing
 	// everything to a halt
@@ -97,7 +94,8 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if err != nil {
 		co.Warning(ctxt, err)
 	}
-	(*md)["mount"] = ""
+	md := &dc.VolMetadata{}
+	(*md)["mount-path"] = ""
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
