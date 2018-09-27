@@ -51,6 +51,9 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		// Mount Device
 		parts := strings.Split(fs, " ")
 		fsType, fsArgs := parts[0], parts[1:]
+		if fsType == "" {
+			fsType = "ext4"
+		}
 		err = vol.Format(fsType, fsArgs)
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
