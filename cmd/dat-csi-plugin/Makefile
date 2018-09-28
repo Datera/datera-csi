@@ -1,4 +1,4 @@
-VERSION ?= v0.1.0
+VERSION ?= $(shell cat ../../VERSION)
 NAME=dat-csi-plugin
 
 compile:
@@ -31,3 +31,7 @@ testcd:
 clean:
 	@echo "==> Cleaning artifacts"
 	@GOOS=linux go clean -i -x ./...
+
+build: compile
+	@echo "==> Building Docker Image"
+	@docker build -t "dateraiodev/dat-csi-plugin:$(VERSION)" . -f Dockerfile

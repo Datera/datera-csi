@@ -66,6 +66,7 @@ func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startT
 		}
 		snaps, err = vol.ListSnapshots(sid)
 	} else {
+		// TODO: When the new Snapshots API is available, bypass this slow path
 		if sourceVol == "" {
 			vols, err = r.ListVolumes(0, 0)
 			if err != nil {
