@@ -108,11 +108,22 @@ func (d *Driver) Run() error {
 	if u.Host == "" {
 		addr = filepath.FromSlash(u.Path)
 	}
+	if _, err := os.Stat(addr); os.IsNotExist(err) {
+		err = os.MkdirAll(addr, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
 	co.Infof(ctxt, "Removing socket: %s\n", addr)
 	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
 		co.Errorf(ctxt, "Failed to remove unix domain socket file: %s", addr)
 		return err
 	}
+	// co.Infof(ctxt, "Creating socket: %s\n", addr)
+	// _, err = os.Create(addr)
+	// if err != nil {
+	// 	return err
+	// }
 	listener, err := net.Listen(u.Scheme, addr)
 	if err != nil {
 		co.Errorf(ctxt, "Error starting listener for address: %s", addr)

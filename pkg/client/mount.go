@@ -111,7 +111,7 @@ func (v *Volume) Unmount() error {
 func mount(ctxt context.Context, device, dest string, options []string) error {
 	// Check/create directory
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		err = os.MkdirAll(dest, 0755)
+		err = os.MkdirAll(dest, os.ModePerm)
 		if err != nil {
 			return err
 		}
