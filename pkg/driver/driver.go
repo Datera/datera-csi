@@ -24,12 +24,19 @@ const (
 	vendorVersion = "0.1.0"
 
 	// Environment Variables
+	EnvSocket = "SOCKET"
+
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
 	EnvReplicaOverride  = "DAT_REPLICA_OVERRIDE"
 )
 
+var (
+	DefaultSocket = fmt.Sprintf("unix:///var/lib/kubelet/plugins/%s/csi.sock", driverName)
+)
+
 type EnvVars struct {
+	Socket           string
 	VolPerNode       int
 	DisableMultipath bool
 	ReplicaOverride  bool
@@ -52,6 +59,7 @@ func readEnvVars() *EnvVars {
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
 		ReplicaOverride:  ro,
+		Socket:           os.Getenv(EnvSocket),
 	}
 }
 
@@ -69,11 +77,14 @@ type Driver struct {
 }
 
 func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
+	env := readEnvVars()
+	if env.Socket != "" {
+		sock = env.Socket
+	}
 	client, err := dc.NewDateraClient(udc)
 	if err != nil {
 		return nil, err
 	}
-	env := readEnvVars()
 	return &Driver{
 		dc:   client,
 		sock: sock,

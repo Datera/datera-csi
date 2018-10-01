@@ -15,12 +15,8 @@ const (
 )
 
 var (
-	endpoint = flag.String("endpoint", "unix:///var/lib/kubelet/plugins/io.datera.csi.dsp/csi.sock", "CSI endpoint")
+	socket = flag.String("socket", driver.DefaultSocket, "CSI Socket")
 )
-
-func Usage() {
-	log.Fatal("You used it wrong dummy")
-}
 
 func Main() int {
 	flag.Parse()
@@ -31,7 +27,7 @@ func Main() int {
 	}
 	log.Info("Using Universal Datera Config")
 	udc.PrintConfig()
-	d, err := driver.NewDateraDriver(*endpoint, conf)
+	d, err := driver.NewDateraDriver(*socket, conf)
 	if err != nil {
 		log.Fatal(err)
 	}
