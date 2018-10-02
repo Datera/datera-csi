@@ -24,19 +24,31 @@ const (
 	vendorVersion = "0.1.0"
 
 	// Environment Variables
-	EnvSocket = "DAT_SOCKET"
-
+	EnvSocket           = "DAT_SOCKET"
+	EnvType             = "DAT_TYPE"
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
 	EnvReplicaOverride  = "DAT_REPLICA_OVERRIDE"
+
+	IdentityType = iota + 1
+	ControllerType
+	NodeType
+	AllType
 )
 
 var (
 	DefaultSocket = fmt.Sprintf("unix:///var/lib/kubelet/plugins/%s/csi.sock", driverName)
+	StrToType     = map[string]int{
+		"identity":   IdentityType,
+		"controller": ControllerType,
+		"node":       NodeType,
+		"all":        AllType,
+	}
 )
 
 type EnvVars struct {
 	Socket           string
+	Type             int
 	VolPerNode       int
 	DisableMultipath bool
 	ReplicaOverride  bool
@@ -64,6 +76,7 @@ func readEnvVars() *EnvVars {
 		DisableMultipath: dm,
 		ReplicaOverride:  ro,
 		Socket:           so,
+		Type:             StrToType[os.Getenv(EnvType)],
 	}
 }
 
@@ -135,9 +148,18 @@ func (d *Driver) Run() error {
 		return err
 	}
 	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServer))
-	csi.RegisterControllerServer(d.gs, d)
-	csi.RegisterIdentityServer(d.gs, d)
-	csi.RegisterNodeServer(d.gs, d)
+	if d.env.Type == ControllerType || d.env.Type == AllType {
+		co.Info(ctxt, "Starting 'controller' service\n")
+		csi.RegisterControllerServer(d.gs, d)
+	}
+	if d.env.Type == IdentityType || d.env.Type == AllType {
+		co.Info(ctxt, "Starting 'identity' service\n")
+		csi.RegisterIdentityServer(d.gs, d)
+	}
+	if d.env.Type == NodeType || d.env.Type == AllType {
+		co.Info(ctxt, "Starting 'node' service\n")
+		csi.RegisterNodeServer(d.gs, d)
+	}
 	co.Infof(ctxt, "Datera CSI Driver Serving On Socket: %s\n", addr)
 	return d.gs.Serve(listener)
 }
