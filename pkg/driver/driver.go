@@ -24,7 +24,7 @@ const (
 	vendorVersion = "0.1.0"
 
 	// Environment Variables
-	EnvSocket = "SOCKET"
+	EnvSocket = "DAT_SOCKET"
 
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
@@ -55,11 +55,15 @@ func readEnvVars() *EnvVars {
 	if d := os.Getenv(EnvReplicaOverride); d != "" {
 		ro = true
 	}
+	var so string
+	if so = os.Getenv(EnvSocket); so == "" {
+		so = DefaultSocket
+	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
 		ReplicaOverride:  ro,
-		Socket:           os.Getenv(EnvSocket),
+		Socket:           so,
 	}
 }
 
@@ -76,18 +80,15 @@ type Driver struct {
 	sock string
 }
 
-func NewDateraDriver(sock string, udc *udc.UDC) (*Driver, error) {
+func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 	env := readEnvVars()
-	if env.Socket != "" {
-		sock = env.Socket
-	}
 	client, err := dc.NewDateraClient(udc)
 	if err != nil {
 		return nil, err
 	}
 	return &Driver{
 		dc:   client,
-		sock: sock,
+		sock: env.Socket,
 		env:  env,
 		nid:  co.GetHost(),
 	}, nil
@@ -97,7 +98,9 @@ func (d *Driver) Run() error {
 	ctxt := co.WithCtxt(context.Background(), "Run")
 	co.Infof(ctxt, "Starting CSI driver\n")
 
+	co.Infof(ctxt, "Parsing socket: %s\n", d.sock)
 	u, err := url.Parse(d.sock)
+	co.Debugf(ctxt, "Parsed socket: %#v\n", u)
 	if err != nil {
 		return err
 	}
@@ -108,7 +111,9 @@ func (d *Driver) Run() error {
 	if u.Host == "" {
 		addr = filepath.FromSlash(u.Path)
 	}
+	co.Debugf(ctxt, "Checking for file: %s\n", addr)
 	if _, err := os.Stat(addr); os.IsNotExist(err) {
+		co.Debugf(ctxt, "Creating directories: %s\n", addr)
 		err = os.MkdirAll(addr, os.ModePerm)
 		if err != nil {
 			return err

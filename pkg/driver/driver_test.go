@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"os"
 	"testing"
 
 	// csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
@@ -18,7 +19,10 @@ func getDriver(t *testing.T) *Driver {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := NewDateraDriver(Endpoint, conf)
+	if err = os.Setenv(EnvSocket, Endpoint); err != nil {
+		t.Fatal(err)
+	}
+	d, err := NewDateraDriver(conf)
 	if err != nil {
 		t.Fatal(err)
 	}

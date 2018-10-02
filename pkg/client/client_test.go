@@ -42,7 +42,8 @@ func createRegisterInitiator(t *testing.T, client *DateraClient, vol *Volume) fu
 }
 
 func createSnapshot(t *testing.T, client *DateraClient, vol *Volume) (*Snapshot, func()) {
-	snap, err := vol.CreateSnapshot()
+	name := "my-test-snap-" + dsdk.RandString(5)
+	snap, err := vol.CreateSnapshot(name)
 	if err != nil {
 		t.Fatal(err)
 	}

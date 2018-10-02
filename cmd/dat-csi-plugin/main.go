@@ -14,10 +14,6 @@ const (
 	usageTemplate = `INSERT TEMPLATE TEXT`
 )
 
-var (
-	socket = flag.String("socket", driver.DefaultSocket, "CSI Socket")
-)
-
 func Main() int {
 	flag.Parse()
 
@@ -27,7 +23,7 @@ func Main() int {
 	}
 	log.Info("Using Universal Datera Config")
 	udc.PrintConfig()
-	d, err := driver.NewDateraDriver(*socket, conf)
+	d, err := driver.NewDateraDriver(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
