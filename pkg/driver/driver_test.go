@@ -22,6 +22,9 @@ func getDriver(t *testing.T) *Driver {
 	if err = os.Setenv(EnvSocket, Endpoint); err != nil {
 		t.Fatal(err)
 	}
+	if err = os.Setenv(EnvType, "all"); err != nil {
+		t.Fatal(err)
+	}
 	d, err := NewDateraDriver(conf)
 	if err != nil {
 		t.Fatal(err)
