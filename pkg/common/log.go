@@ -2,7 +2,11 @@ package common
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"runtime"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -12,99 +16,68 @@ const (
 	TraceId = "tid"
 )
 
-func Debug(ctxt context.Context, s interface{}) {
+// DecorateRuntimeContext appends line, file and function context to the logger
+func DecorateRuntimeContext(logger *log.Entry) *log.Entry {
+	if pc, file, line, ok := runtime.Caller(3); ok {
+		fName := runtime.FuncForPC(pc).Name()
+		return logger.WithField("file", file).WithField("line", line).WithField("func", fName)
+	} else {
+		return logger
+	}
+}
+
+func logHelper(ctxt context.Context) *log.Entry {
 	reqname := ctxt.Value(ReqName).(string)
 	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
+	return DecorateRuntimeContext(log.WithFields(log.Fields{
 		ReqName: reqname,
 		TraceId: tid,
-	}).Debug(s)
+	}))
+}
+
+func Debug(ctxt context.Context, s interface{}) {
+	logHelper(ctxt).Debug(s)
 }
 
 func Debugf(ctxt context.Context, s string, args ...interface{}) {
 	s = checkArgs(ctxt, s, args...)
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Debugf(s, args...)
+	logHelper(ctxt).Debugf(s, args...)
 }
 
 func Info(ctxt context.Context, s interface{}) {
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Info(s)
+	logHelper(ctxt).Info(s)
 }
 
 func Infof(ctxt context.Context, s string, args ...interface{}) {
 	s = checkArgs(ctxt, s, args...)
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Infof(s, args...)
+	logHelper(ctxt).Infof(s, args...)
 }
 
 func Warning(ctxt context.Context, s interface{}) {
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Warning(s)
+	logHelper(ctxt).Warning(s)
 }
 
 func Warningf(ctxt context.Context, s string, args ...interface{}) {
 	s = checkArgs(ctxt, s, args...)
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Warningf(s, args...)
+	logHelper(ctxt).Warningf(s, args...)
 }
 
 func Error(ctxt context.Context, s interface{}) {
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Error(s)
+	logHelper(ctxt).Error(s)
 }
 
 func Errorf(ctxt context.Context, s string, args ...interface{}) {
 	s = checkArgs(ctxt, s, args...)
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Errorf(s, args...)
+	logHelper(ctxt).Errorf(s, args...)
 }
 
 func Fatal(ctxt context.Context, s interface{}) {
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Fatal(s)
+	logHelper(ctxt).Fatal(s)
 }
 
 func Fatalf(ctxt context.Context, s string, args ...interface{}) {
 	s = checkArgs(ctxt, s, args...)
-	reqname := ctxt.Value(ReqName).(string)
-	tid := ctxt.Value(TraceId).(string)
-	log.WithFields(log.Fields{
-		ReqName: reqname,
-		TraceId: tid,
-	}).Fatalf(s, args...)
+	logHelper(ctxt).Fatalf(s, args...)
 }
 
 // Hack just to make sure I don't miss these
@@ -121,4 +94,28 @@ func checkArgs(ctxt context.Context, s string, args ...interface{}) string {
 		s = strings.Join([]string{s, "\n"}, "")
 	}
 	return s
+}
+
+type LogFormatter struct {
+}
+
+func (f *LogFormatter) Format(entry *log.Entry) ([]byte, error) {
+	msg := entry.Message
+	level := entry.Level
+	t := entry.Time
+	fields, err := json.Marshal(entry.Data)
+	if err != nil {
+		fmt.Printf("Error marshalling fields during logging: %s\n", err)
+	}
+	return []byte(fmt.Sprintf("%s %s %s %s\n",
+		t.Format(time.RFC3339),
+		strings.ToUpper(level.String()),
+		string(msg),
+		fields),
+	), nil
+}
+
+func init() {
+	log.SetFormatter(&LogFormatter{})
+	log.SetLevel(log.DebugLevel)
 }

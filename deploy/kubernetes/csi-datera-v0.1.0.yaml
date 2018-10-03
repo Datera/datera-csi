@@ -26,6 +26,39 @@
 # * datera-plugin (controller)
 # * datera-plugin (node/identity)
 # * datera storage class
+#
+#
+# #################################
+# StorageClass Supported Parameters
+# #################################
+# Name                 Default
+# -------------        ------------
+# replica_count        3
+# placement_mode       hybrid
+# ip_pool              default
+# template             ""
+# read_iops_max        0
+# write_iops_max       0
+# total_iops_max       0
+# read_bandwidth_max   0
+# write_bandwidth_max  0
+# total_bandwidth_max  0
+# iops_per_gb          0
+# bandwidth_per_gb     0
+# fs_type              ext4
+# fs_args              -E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F
+#
+#
+# Currently datera UDC environment variables are used to initialize the driver
+# (This may change in the future)
+#
+# DAT_MGMT
+# DAT_USER
+# DAT_PASS
+# DAT_TENANT
+# DAT_API
+#
+# These need to be set for both the controller StatefulSet and node DaemonSet
 
 
 ---
@@ -38,7 +71,7 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: io.datera.csi.dsp
 parameters:
-  replicas: 1
+  replica_count: "3"
 
 ###### Controller ######
 ---
