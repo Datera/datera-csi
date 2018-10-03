@@ -33,6 +33,7 @@ const (
 	IdentityType = iota + 1
 	ControllerType
 	NodeType
+	NodeIdentityType
 	AllType
 )
 
@@ -42,6 +43,7 @@ var (
 		"identity":   IdentityType,
 		"controller": ControllerType,
 		"node":       NodeType,
+		"nodeident":  NodeIdentityType,
 		"all":        AllType,
 	}
 )
@@ -152,11 +154,11 @@ func (d *Driver) Run() error {
 		co.Info(ctxt, "Starting 'controller' service\n")
 		csi.RegisterControllerServer(d.gs, d)
 	}
-	if d.env.Type == IdentityType || d.env.Type == AllType {
+	if d.env.Type == IdentityType || d.env.Type == NodeIdentityType || d.env.Type == AllType {
 		co.Info(ctxt, "Starting 'identity' service\n")
 		csi.RegisterIdentityServer(d.gs, d)
 	}
-	if d.env.Type == NodeType || d.env.Type == AllType {
+	if d.env.Type == NodeType || d.env.Type == NodeIdentityType || d.env.Type == AllType {
 		co.Info(ctxt, "Starting 'node' service\n")
 		csi.RegisterNodeServer(d.gs, d)
 	}
