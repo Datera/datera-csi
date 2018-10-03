@@ -34,6 +34,7 @@ const (
 	ControllerType
 	NodeType
 	NodeIdentityType
+	ControllerIdentityType
 	AllType
 )
 
@@ -44,6 +45,7 @@ var (
 		"controller": ControllerType,
 		"node":       NodeType,
 		"nodeident":  NodeIdentityType,
+		"conident":   ControllerIdentityType,
 		"all":        AllType,
 	}
 )
@@ -150,11 +152,11 @@ func (d *Driver) Run() error {
 		return err
 	}
 	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServer))
-	if d.env.Type == ControllerType || d.env.Type == AllType {
+	if d.env.Type == ControllerType || d.env.Type == ControllerIdentityType || d.env.Type == AllType {
 		co.Info(ctxt, "Starting 'controller' service\n")
 		csi.RegisterControllerServer(d.gs, d)
 	}
-	if d.env.Type == IdentityType || d.env.Type == NodeIdentityType || d.env.Type == AllType {
+	if d.env.Type == IdentityType || d.env.Type == NodeIdentityType || d.env.Type == ControllerIdentityType || d.env.Type == AllType {
 		co.Info(ctxt, "Starting 'identity' service\n")
 		csi.RegisterIdentityServer(d.gs, d)
 	}
