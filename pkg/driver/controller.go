@@ -23,118 +23,111 @@ const (
 
 func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts, error) {
 	//Golang makes something that should be simple, repetative and gross
-	dparams := make(map[string]string, 13)
 	vo := &dc.VolOpts{}
 	var err error
-	for k := range params {
-		if strings.HasPrefix(k, "DF:") {
-			nk := strings.Replace(k, "DF:", "", 1)
-			dparams[nk] = params[k]
-		}
-	}
-	co.Debugf(ctxt, "Filtered Params: %s", dparams)
+	co.Debugf(ctxt, "Filtered Params: %s", params)
 	// set defaults
-	if _, ok := dparams["iops_per_gb"]; !ok {
-		dparams["iops_per_gb"] = "0"
+	if _, ok := params["iops_per_gb"]; !ok {
+		params["iops_per_gb"] = "0"
 	}
-	if _, ok := dparams["bandwidth_per_gb"]; !ok {
-		dparams["bandwidth_per_gb"] = "0"
+	if _, ok := params["bandwidth_per_gb"]; !ok {
+		params["bandwidth_per_gb"] = "0"
 	}
-	if _, ok := dparams["placement_mode"]; !ok {
-		dparams["placement_mode"] = "hybrid"
+	if _, ok := params["placement_mode"]; !ok {
+		params["placement_mode"] = "hybrid"
 	}
-	if _, ok := dparams["round_robin"]; !ok {
-		dparams["round_robin"] = "false"
+	if _, ok := params["round_robin"]; !ok {
+		params["round_robin"] = "false"
 	}
-	if _, ok := dparams["replica_count"]; !ok {
-		dparams["replica_count"] = "3"
+	if _, ok := params["replica_count"]; !ok {
+		params["replica_count"] = "3"
 	}
-	if _, ok := dparams["ip_pool"]; !ok {
-		dparams["ip_pool"] = "default"
+	if _, ok := params["ip_pool"]; !ok {
+		params["ip_pool"] = "default"
 	}
-	if _, ok := dparams["template"]; !ok {
-		dparams["template"] = ""
+	if _, ok := params["template"]; !ok {
+		params["template"] = ""
 	}
-	if _, ok := dparams["read_iops_max"]; !ok {
-		dparams["read_iops_max"] = "0"
+	if _, ok := params["read_iops_max"]; !ok {
+		params["read_iops_max"] = "0"
 	}
-	if _, ok := dparams["write_iops_max"]; !ok {
-		dparams["write_iops_max"] = "0"
+	if _, ok := params["write_iops_max"]; !ok {
+		params["write_iops_max"] = "0"
 	}
-	if _, ok := dparams["total_iops_max"]; !ok {
-		dparams["total_iops_max"] = "0"
+	if _, ok := params["total_iops_max"]; !ok {
+		params["total_iops_max"] = "0"
 	}
-	if _, ok := dparams["read_bandwidth_max"]; !ok {
-		dparams["read_bandwidth_max"] = "0"
+	if _, ok := params["read_bandwidth_max"]; !ok {
+		params["read_bandwidth_max"] = "0"
 	}
-	if _, ok := dparams["write_bandwidth_max"]; !ok {
-		dparams["write_bandwidth_max"] = "0"
+	if _, ok := params["write_bandwidth_max"]; !ok {
+		params["write_bandwidth_max"] = "0"
 	}
-	if _, ok := dparams["total_bandwidth_max"]; !ok {
-		dparams["total_bandwidth_max"] = "0"
+	if _, ok := params["total_bandwidth_max"]; !ok {
+		params["total_bandwidth_max"] = "0"
 	}
-	if _, ok := dparams["fs_type"]; !ok {
-		dparams["fs_type"] = "ext4"
+	if _, ok := params["fs_type"]; !ok {
+		params["fs_type"] = "ext4"
 	}
-	if _, ok := dparams["fs_args"]; !ok {
-		dparams["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
+	if _, ok := params["fs_args"]; !ok {
+		params["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
 	}
 
-	val, err := strconv.ParseInt(dparams["iops_per_gb"], 10, 0)
+	val, err := strconv.ParseInt(params["iops_per_gb"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.IopsPerGb = int(val)
-	val, err = strconv.ParseInt(dparams["bandwidth_per_gb"], 10, 0)
+	val, err = strconv.ParseInt(params["bandwidth_per_gb"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.BandwidthPerGb = int(val)
-	vo.PlacementMode = dparams["placement_mode"]
-	b, err := strconv.ParseBool(dparams["round_robin"])
+	vo.PlacementMode = params["placement_mode"]
+	b, err := strconv.ParseBool(params["round_robin"])
 	if err != nil {
 		return nil, err
 	}
 	vo.RoundRobin = b
-	val, err = strconv.ParseInt(dparams["replica_count"], 10, 0)
+	val, err = strconv.ParseInt(params["replica_count"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.Replica = int(val)
-	vo.IpPool = dparams["ip_pool"]
-	vo.Template = dparams["template"]
-	val, err = strconv.ParseInt(dparams["read_iops_max"], 10, 0)
+	vo.IpPool = params["ip_pool"]
+	vo.Template = params["template"]
+	val, err = strconv.ParseInt(params["read_iops_max"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.ReadIopsMax = int(val)
-	val, err = strconv.ParseInt(dparams["write_iops_max"], 10, 0)
+	val, err = strconv.ParseInt(params["write_iops_max"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.WriteIopsMax = int(val)
-	val, err = strconv.ParseInt(dparams["total_iops_max"], 10, 0)
+	val, err = strconv.ParseInt(params["total_iops_max"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.TotalIopsMax = int(val)
-	val, err = strconv.ParseInt(dparams["read_bandwidth_max"], 10, 0)
+	val, err = strconv.ParseInt(params["read_bandwidth_max"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.ReadBandwidthMax = int(val)
-	val, err = strconv.ParseInt(dparams["write_bandwidth_max"], 10, 0)
+	val, err = strconv.ParseInt(params["write_bandwidth_max"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.WriteBandwidthMax = int(val)
-	val, err = strconv.ParseInt(dparams["total_bandwidth_max"], 10, 0)
+	val, err = strconv.ParseInt(params["total_bandwidth_max"], 10, 0)
 	if err != nil {
 		return nil, err
 	}
 	vo.TotalBandwidthMax = int(val)
-	vo.FsType = dparams["fs_type"]
-	vo.FsArgs = strings.Split(dparams["fs_args"], " ")
+	vo.FsType = params["fs_type"]
+	vo.FsArgs = strings.Split(params["fs_args"], " ")
 	return vo, nil
 }
 

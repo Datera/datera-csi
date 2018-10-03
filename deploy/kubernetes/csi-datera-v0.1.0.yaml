@@ -37,6 +37,8 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: io.datera.csi.dsp
+parameters:
+  replicas: 1
 
 ###### Controller ######
 ---
