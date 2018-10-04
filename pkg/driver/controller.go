@@ -23,6 +23,9 @@ const (
 
 func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts, error) {
 	//Golang makes something that should be simple, repetative and gross
+	if params == nil {
+		params = make(map[string]string, 16)
+	}
 	vo := &dc.VolOpts{}
 	var err error
 	co.Debugf(ctxt, "Filtered Params: %s", params)
