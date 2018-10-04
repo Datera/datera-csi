@@ -73,7 +73,7 @@ func getClient(t *testing.T) *DateraClient {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewDateraClient(conf)
+	client, err := NewDateraClient(conf, true)
 	if err != nil {
 		t.Fatal(err)
 	}

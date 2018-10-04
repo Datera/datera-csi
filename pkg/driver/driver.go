@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
 	grpc "google.golang.org/grpc"
@@ -25,6 +26,7 @@ const (
 
 	// Environment Variables
 	EnvSocket           = "DAT_SOCKET"
+	EnvHeartbeat        = "DAT_HEARTBEAT"
 	EnvType             = "DAT_TYPE"
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
@@ -56,6 +58,7 @@ type EnvVars struct {
 	VolPerNode       int
 	DisableMultipath bool
 	ReplicaOverride  bool
+	Heartbeat        int
 }
 
 func readEnvVars() *EnvVars {
@@ -75,12 +78,17 @@ func readEnvVars() *EnvVars {
 	if so = os.Getenv(EnvSocket); so == "" {
 		so = DefaultSocket
 	}
+	hb64, err := strconv.ParseInt(os.Getenv(EnvHeartbeat), 0, 0)
+	if err != nil {
+		hb64 = int64(60)
+	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
 		ReplicaOverride:  ro,
 		Socket:           so,
 		Type:             StrToType[os.Getenv(EnvType)],
+		Heartbeat:        int(hb64),
 	}
 }
 
@@ -99,7 +107,7 @@ type Driver struct {
 
 func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 	env := readEnvVars()
-	client, err := dc.NewDateraClient(udc)
+	client, err := dc.NewDateraClient(udc, false)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +173,7 @@ func (d *Driver) Run() error {
 		csi.RegisterNodeServer(d.gs, d)
 	}
 	co.Infof(ctxt, "Datera CSI Driver Serving On Socket: %s\n", addr)
+	go d.Heartbeater()
 	return d.gs.Serve(listener)
 }
 
@@ -172,6 +181,18 @@ func (d *Driver) Stop() {
 	ctxt := co.WithCtxt(context.Background(), "Stop")
 	co.Info(ctxt, "Datera CSI driver stopped")
 	d.gs.Stop()
+}
+
+func (d *Driver) Heartbeater() {
+	ctxt := co.WithCtxt(context.Background(), "Heartbeat")
+	co.Infof(ctxt, "Starting heartbeat service. Interval: %d", d.env.Heartbeat)
+	t := time.Second * time.Duration(d.env.Heartbeat)
+	for {
+		if err := d.dc.HealthCheck(); err != nil {
+			co.Errorf(ctxt, "Heartbeat failure: %s\n", err)
+		}
+		time.Sleep(t)
+	}
 }
 
 func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {

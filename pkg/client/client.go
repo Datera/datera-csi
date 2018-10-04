@@ -13,13 +13,15 @@ type DateraClient struct {
 	ctxt context.Context
 }
 
-func NewDateraClient(udc *udc.UDC) (*DateraClient, error) {
+func NewDateraClient(udc *udc.UDC, healthcheck bool) (*DateraClient, error) {
 	sdk, err := dsdk.NewSDK(udc, true)
 	if err != nil {
 		return nil, err
 	}
-	if err = sdk.HealthCheck(); err != nil {
-		return nil, err
+	if healthcheck {
+		if err = sdk.HealthCheck(); err != nil {
+			return nil, err
+		}
 	}
 	return &DateraClient{
 		sdk: sdk,
