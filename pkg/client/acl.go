@@ -52,7 +52,7 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 			return nil, err
 		} else if apierr != nil {
 			co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-			return nil, fmt.Errorf("ApiError: %#v", *apierr)
+			return nil, co.ErrTranslator(apierr)
 		}
 
 	}
@@ -82,7 +82,7 @@ func (r *Initiator) Delete(quiet bool) error {
 		err = fmt.Errorf(dsdk.Pretty(apierr))
 		co.Error(ctxt, err)
 		if !quiet {
-			return err
+			return co.ErrTranslator(apierr)
 		}
 	}
 	return nil
@@ -102,7 +102,7 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 		return err
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return fmt.Errorf("ApiError: %#v", *apierr)
+		return co.ErrTranslator(apierr)
 	}
 	acl.Initiators = append(acl.Initiators, myInit)
 	if _, apierr, err = acl.Set(&dsdk.AclPolicySetRequest{
@@ -113,7 +113,7 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 		return err
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return fmt.Errorf("ApiError: %#v", *apierr)
+		return co.ErrTranslator(apierr)
 	}
 	return nil
 }

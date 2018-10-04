@@ -25,10 +25,12 @@ func (r DateraClient) GetCapacity() (*Capacity, error) {
 	})
 	if err != nil {
 		co.Error(ctxt, err)
+		return nil, err
 	}
 	if apierr != nil {
 		err = fmt.Errorf(dsdk.Pretty(apierr))
 		co.Error(ctxt, err)
+		return nil, co.ErrTranslator(apierr)
 	}
 	return &Capacity{
 		Total:             sys.TotalCapacity,

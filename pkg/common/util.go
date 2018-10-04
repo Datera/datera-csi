@@ -8,6 +8,10 @@ import (
 	"strings"
 
 	uuid "github.com/google/uuid"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+
+	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
 
 var (
@@ -83,4 +87,22 @@ func ParseSnapId(snapId string) (string, string) {
 		return "", ""
 	}
 	return parts[0], parts[1]
+}
+
+func GetCode(err error) codes.Code {
+	return status.Code(err)
+}
+
+func IsGrpcErr(err error) bool {
+	return status.Code(err) != codes.Unknown
+}
+
+func ErrTranslator(apierr *dsdk.ApiErrorResponse) error {
+	if apierr.Name == "AuthFailedError" {
+		return status.Errorf(codes.Unauthenticated, "%s: %s", apierr.Name, apierr.Message)
+	}
+	if apierr.Name == "NotFound" {
+		return status.Errorf(codes.NotFound, "%s: %s", apierr.Name, apierr.Message)
+	}
+	return status.Errorf(codes.Unknown, "%s: %s", apierr.Name, apierr.Message)
 }

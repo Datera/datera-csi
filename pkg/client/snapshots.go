@@ -155,11 +155,11 @@ func (r *Volume) GetSnapshotByUuid(id *uuid.UUID) (*Snapshot, error) {
 		return nil, err
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return nil, fmt.Errorf("ApiError: %#v", *apierr)
+		return nil, co.ErrTranslator(apierr)
 	}
 	for _, snap := range snaps {
 		if snap.Uuid == id.String() {
-			v, err := AiToClientVol(ctxt, r.Ai, false, false, nil)
+			v, err := aiToClientVol(ctxt, r.Ai, false, false, nil)
 			if err != nil {
 				co.Error(ctxt, err)
 				return nil, err
@@ -192,12 +192,12 @@ func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 		if apierr.Name == "InvalidRequestError" && apierr.Code == 15 {
 			return r.GetSnapshotByUuid(sid)
 		}
-		return nil, fmt.Errorf("ApiError: %#v", *apierr)
+		return nil, co.ErrTranslator(apierr)
 	} else if err != nil {
 		co.Error(ctxt, err)
 		return nil, err
 	}
-	v, err := AiToClientVol(ctxt, r.Ai, false, false, nil)
+	v, err := aiToClientVol(ctxt, r.Ai, false, false, nil)
 	if err != nil {
 		co.Error(ctxt, err)
 		return nil, err
@@ -234,7 +234,7 @@ func (r *Volume) DeleteSnapshot(id string) error {
 		return err
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return fmt.Errorf("ApiError: %#v", *apierr)
+		return co.ErrTranslator(apierr)
 	}
 	return nil
 }
@@ -252,11 +252,11 @@ func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 		return nil, err
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return nil, fmt.Errorf("ApiError: %#v", *apierr)
+		return nil, co.ErrTranslator(apierr)
 	}
 	for _, s := range rsnaps {
 		if snapId == "" || snapId == s.UtcTs {
-			v, err := AiToClientVol(ctxt, r.Ai, false, false, nil)
+			v, err := aiToClientVol(ctxt, r.Ai, false, false, nil)
 			if err != nil {
 				co.Error(ctxt, err)
 				return nil, err
@@ -286,7 +286,7 @@ func (s *Snapshot) Reload() error {
 		return err
 	} else if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return fmt.Errorf("ApiError: %#v", *apierr)
+		return co.ErrTranslator(apierr)
 	}
 	s.Snap = snap
 	s.Status = snap.OpState
