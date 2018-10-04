@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	driverName    = "io.daterainc.csi.dsp"
-	vendorVersion = "0.1.0"
+	driverName = "io.daterainc.csi.dsp"
 
 	// Environment Variables
 	EnvSocket           = "DAT_SOCKET"
@@ -50,6 +49,8 @@ var (
 		"conident":   ControllerIdentityType,
 		"all":        AllType,
 	}
+	Version = "No Version Provided"
+	Githash = "No Githash Provided"
 )
 
 type EnvVars struct {
@@ -102,7 +103,8 @@ type Driver struct {
 	env *EnvVars
 	nid string
 
-	sock string
+	sock    string
+	version string
 }
 
 func NewDateraDriver(udc *udc.UDC) (*Driver, error) {

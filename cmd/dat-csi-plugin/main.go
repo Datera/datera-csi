@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	driver "github.com/Datera/datera-csi/pkg/driver"
@@ -10,13 +11,17 @@ import (
 	udc "github.com/Datera/go-udc/pkg/udc"
 )
 
-const (
-	usageTemplate = `INSERT TEMPLATE TEXT`
+var (
+	version = flag.Bool("version", false, "Show version information")
 )
 
 func Main() int {
 	flag.Parse()
 
+	if *version {
+		fmt.Printf("Datera CSI Plugin Version: %s-%s\n", driver.Version, driver.Githash)
+		os.Exit(0)
+	}
 	conf, err := udc.GetConfig()
 	if err != nil {
 		log.Fatal(err)

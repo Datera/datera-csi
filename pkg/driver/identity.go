@@ -21,7 +21,7 @@ func (d *Driver) GetPluginInfo(ctxt context.Context, req *csi.GetPluginInfoReque
 	manifest := getManifestData()
 	return &csi.GetPluginInfoResponse{
 		Name:          driverName,
-		VendorVersion: vendorVersion,
+		VendorVersion: Version,
 		Manifest:      manifest,
 	}, nil
 }

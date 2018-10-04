@@ -1,15 +1,16 @@
 VERSION ?= $(shell cat ../../VERSION)
+GITHASH ?= $(shell git describe --match nEvErMatch --always --abbrev=10 --dirty)
 NAME=dat-csi-plugin
 
 compile:
-	@echo "==> Building the Datera CSI Driver"
+	@echo "==> Building the Datera CSI Driver Version ${VERSION}"
 	@env go get -d ./...
-	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME}
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'"
 	@env go vet ./...
 
 local:
-	@echo "==> Building the Datera CSI Driver For Local System"
-	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME}
+	@echo "==> Building the Datera CSI Driver Version ${VERSION} For Local System"
+	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'"
 	@env go vet ./...
 
 test:
