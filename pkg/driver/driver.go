@@ -109,7 +109,8 @@ type Driver struct {
 
 func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 	env := readEnvVars()
-	client, err := dc.NewDateraClient(udc, false)
+	v := fmt.Sprintf("%s-%s", Version, Githash)
+	client, err := dc.NewDateraClient(udc, false, v)
 	if err != nil {
 		return nil, err
 	}

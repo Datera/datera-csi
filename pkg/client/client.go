@@ -13,11 +13,12 @@ type DateraClient struct {
 	ctxt context.Context
 }
 
-func NewDateraClient(udc *udc.UDC, healthcheck bool) (*DateraClient, error) {
+func NewDateraClient(udc *udc.UDC, healthcheck bool, driver string) (*DateraClient, error) {
 	sdk, err := dsdk.NewSDK(udc, true)
 	if err != nil {
 		return nil, err
 	}
+	sdk.SetDriver(driver)
 	if healthcheck {
 		if err = sdk.HealthCheck(); err != nil {
 			return nil, err
