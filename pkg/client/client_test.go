@@ -188,6 +188,25 @@ func TestACL(t *testing.T) {
 	defer cleanv()
 }
 
+func TestIpPools(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	ipp, err := client.GetIpPoolFromName("default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = vol.RegisterIpPool(ipp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanv()
+}
+
 func TestLoginLogout(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{
