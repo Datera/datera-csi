@@ -75,6 +75,9 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	if _, ok := params["fs_args"]; !ok {
 		params["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
 	}
+	if _, ok := params["delete_on_unmount"]; !ok {
+		params["delete_on_unmount"] = "false"
+	}
 
 	val, err := strconv.ParseInt(params["iops_per_gb"], 10, 0)
 	if err != nil {
@@ -130,7 +133,16 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	}
 	vo.TotalBandwidthMax = int(val)
 	vo.FsType = params["fs_type"]
+	// This restriction is to prevent exceeding 2048 characters in metadata
+	if len(params["fs_args"]) > 200 {
+		return nil, fmt.Errorf("fs_args must be <= 200 characters")
+	}
 	vo.FsArgs = strings.Split(params["fs_args"], " ")
+	b, err = strconv.ParseBool(params["delete_on_unmount"])
+	if err != nil {
+		return nil, err
+	}
+	vo.DeleteOnUnmount = b
 	return vo, nil
 }
 
@@ -200,6 +212,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	md := &dc.VolMetadata{}
+	// Limit name size so we don't overflow metadata
+	if len(req.Name) > 100 {
+		req.Name = req.Name[:100]
+		co.Warningf(ctxt, "Limiting display-name to 100 characters: %s", req.Name)
+	}
 	(*md)["display-name"] = req.Name
 	registerMdFromCtxt(ctxt, md)
 
