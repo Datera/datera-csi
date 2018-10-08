@@ -3,39 +3,42 @@ package client
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
+
+	"encoding/json"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
 
 type VolOpts struct {
-	Size            int
-	Replica         int
-	Template        string
-	FsType          string
-	FsArgs          []string
-	PlacementMode   string
-	CloneSrc        string
-	CloneVolSrc     string
-	CloneSnapSrc    string
-	IpPool          string
-	RoundRobin      bool
-	DeleteOnUnmount bool
+	Size            int      `json:"size,omitempty"`
+	Replica         int      `json:"replica,omitempty"`
+	Template        string   `json:"template,omitempty"`
+	FsType          string   `json:"fs_type,omitempty"`
+	FsArgs          []string `json:"fs_args,omitempty"`
+	PlacementMode   string   `json:"placement,omitempty"`
+	CloneSrc        string   `json:"clone_src,omitempty"`
+	CloneVolSrc     string   `json:"clone_vol_src,omitempty"`
+	CloneSnapSrc    string   `json:"clone_snap_src,omitempty"`
+	IpPool          string   `json:"ip_pool,omitempty"`
+	RoundRobin      bool     `json:"round_robin,omitempty"`
+	DeleteOnUnmount bool     `json:"delete_on_unmount,omitempty"`
 
 	// QoS IOPS
-	WriteIopsMax int
-	ReadIopsMax  int
-	TotalIopsMax int
+	WriteIopsMax int `json:"write_iops_max,omitempty"`
+	ReadIopsMax  int `json:"read_iops_max,omitempty"`
+	TotalIopsMax int `json:"total_iops_max,omitempty"`
 
 	// QoS Bandwidth
-	WriteBandwidthMax int
-	ReadBandwidthMax  int
-	TotalBandwidthMax int
+	WriteBandwidthMax int `json:"write_bandwidth_max,omitempty"`
+	ReadBandwidthMax  int `json:"read_bandwidth_max,omitempty"`
+	TotalBandwidthMax int `json:"total_bandwidth_max,omitempty"`
 
 	// Dynamic QoS
-	IopsPerGb      int
-	BandwidthPerGb int
+	IopsPerGb      int `json:"iops_per_gb,omitempty"`
+	BandwidthPerGb int `json:"bandwidth_per_gb,omitempty"`
 }
 
 type Volume struct {
@@ -76,6 +79,41 @@ type Volume struct {
 }
 
 type VolMetadata map[string]string
+
+// This is used to force expensive checking behavior to ensure we're not
+// sending more metadata than can be processed (2048 characters)
+var MetadataDebug = false
+
+func (v VolOpts) ToMap() map[string]string {
+	return map[string]string{
+		"size":              strconv.FormatInt(int64(v.Size), 10),
+		"replica":           strconv.FormatInt(int64(v.Replica), 10),
+		"template":          v.Template,
+		"fs_type":           v.FsType,
+		"fs_args":           strings.Join(v.FsArgs, " "),
+		"placement":         v.PlacementMode,
+		"clone_src":         v.CloneSrc,
+		"clone_vol_src":     v.CloneVolSrc,
+		"clone_snap_src":    v.CloneSnapSrc,
+		"ip_pool":           v.IpPool,
+		"round_robin":       strconv.FormatBool(v.RoundRobin),
+		"delete_on_unmount": strconv.FormatBool(v.DeleteOnUnmount),
+
+		// QoS IOPS
+		"write_iops_max": strconv.FormatInt(int64(v.WriteIopsMax), 10),
+		"read_iops_max":  strconv.FormatInt(int64(v.ReadIopsMax), 10),
+		"total_iops_max": strconv.FormatInt(int64(v.TotalIopsMax), 10),
+
+		// QoS Bandwidth
+		"write_bandwidth_max": strconv.FormatInt(int64(v.WriteBandwidthMax), 10),
+		"read_bandwidth_max":  strconv.FormatInt(int64(v.ReadBandwidthMax), 10),
+		"total_bandwidth_max": strconv.FormatInt(int64(v.TotalBandwidthMax), 10),
+
+		// Dynamic QoS
+		"iops_per_gb":      strconv.FormatInt(int64(v.IopsPerGb), 10),
+		"bandwidth_per_gb": strconv.FormatInt(int64(v.BandwidthPerGb), 10),
+	}
+}
 
 func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool, client *DateraClient) (*Volume, error) {
 	ctxt := context.WithValue(ctx, co.ReqName, "aiToClientVol")
@@ -395,6 +433,24 @@ func (r *Volume) GetMetadata() (*VolMetadata, error) {
 func (r *Volume) SetMetadata(metadata *VolMetadata) (*VolMetadata, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "SetMetadata")
 	co.Debugf(ctxt, "SetMetadata invoked for %s", r.Name)
+	if MetadataDebug {
+		co.Debugf(ctxt, "Running size check on metadata")
+		tmd, err := r.GetMetadata()
+		if err != nil {
+			co.Error(ctxt, err)
+			return nil, err
+		}
+		for k, v := range *metadata {
+			(*tmd)[k] = v
+		}
+		b, err := json.Marshal(tmd)
+		if err != nil {
+			co.Error(ctxt, err)
+			return nil, err
+		}
+		co.Debugf(ctxt, "Size of Metadata in bytes: %d", len(b))
+		co.Debugf(ctxt, "Size of Metadata in runes: %d", len([]rune(string(b))))
+	}
 	resp, apierr, err := r.Ai.SetMetadata(&dsdk.AppInstanceMetadataSetRequest{
 		Ctxt:     ctxt,
 		Metadata: *metadata,

@@ -41,6 +41,8 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if err = vol.RegisterAcl(init); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
+	// Setup IpPool
+
 	// Login to target
 	err = vol.Login(!d.env.DisableMultipath)
 	if err != nil {

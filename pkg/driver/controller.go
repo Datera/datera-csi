@@ -217,6 +217,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
+	// Add parameters to metadata for storage
+	for k, v := range params.ToMap() {
+		(*md)[k] = v
+	}
+
 	// Needed for testing on single-node systems
 	if d.env.ReplicaOverride {
 		params.Replica = 1

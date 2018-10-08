@@ -30,6 +30,7 @@ const (
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
 	EnvReplicaOverride  = "DAT_REPLICA_OVERRIDE"
+	EnvMetadataDebug    = "DAT_METADATA_DEBUG"
 
 	IdentityType = iota + 1
 	ControllerType
@@ -60,6 +61,7 @@ type EnvVars struct {
 	DisableMultipath bool
 	ReplicaOverride  bool
 	Heartbeat        int
+	MetadataDebug    bool
 }
 
 func readEnvVars() *EnvVars {
@@ -83,6 +85,10 @@ func readEnvVars() *EnvVars {
 	if err != nil {
 		hb64 = int64(60)
 	}
+	var mdd bool
+	if d := os.Getenv(EnvDisableMultipath); d != "" {
+		mdd = true
+	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
@@ -90,6 +96,7 @@ func readEnvVars() *EnvVars {
 		Socket:           so,
 		Type:             StrToType[os.Getenv(EnvType)],
 		Heartbeat:        int(hb64),
+		MetadataDebug:    mdd,
 	}
 }
 
@@ -114,6 +121,7 @@ func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 	if err != nil {
 		return nil, err
 	}
+	dc.MetadataDebug = env.MetadataDebug
 	return &Driver{
 		dc:   client,
 		sock: env.Socket,
