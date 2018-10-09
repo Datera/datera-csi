@@ -37,6 +37,7 @@
 # placement_mode       hybrid
 # ip_pool              default
 # template             ""
+# round_robin          false
 # read_iops_max        0
 # write_iops_max       0
 # total_iops_max       0
@@ -47,6 +48,7 @@
 # bandwidth_per_gb     0
 # fs_type              ext4
 # fs_args              -E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F
+# delete_on_unmount    false
 #
 #
 # Currently datera UDC environment variables are used to initialize the driver
