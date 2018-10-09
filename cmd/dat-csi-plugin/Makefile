@@ -34,5 +34,9 @@ clean:
 	@GOOS=linux go clean -i -x ./...
 
 build: compile
-	@echo "==> Building Docker Image"
+	@echo "==> Building Docker Image Latest"
+	@docker build -t "dateraiodev/dat-csi-plugin:latest" . -f Dockerfile
+
+build-release: compile
+	@echo "==> Building Docker Image $(VERSION)"
 	@docker build -t "dateraiodev/dat-csi-plugin:$(VERSION)" . -f Dockerfile
