@@ -100,14 +100,26 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if err != nil {
 		co.Warning(ctxt, err)
 	}
-	md := &dc.VolMetadata{}
+	md, err := vol.GetMetadata()
+	if err != nil {
+		co.Warning(ctxt, err)
+	}
+	if md == nil {
+		md = &dc.VolMetadata{}
+	}
 	(*md)["mount_path"] = ""
 	if _, err = vol.SetMetadata(md); err != nil {
-		return nil, status.Errorf(codes.Unknown, err.Error())
+		co.Warning(ctxt, err)
 	}
 	err = vol.Logout()
 	if err != nil {
 		co.Warning(ctxt, err)
+	}
+	if (*md)["delete_on_unmount"] == "true" {
+		co.Infof(ctxt, "Auto-deleting %s on unmount", vol.Name)
+		if err = vol.Delete(false); err != nil {
+			co.Warning(ctxt, err)
+		}
 	}
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
