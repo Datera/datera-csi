@@ -256,8 +256,10 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	co.Debugf(ctxt, "Registering VolumeCapability %s", at)
 	co.Debugf(ctxt, "Registering VolumeCapability %s", mo)
 	(*md)["access_type"] = at
-	(*md)["fs_type"] = fs
-	(*md)["fs_args"] = fsargs
+	if fs != "" {
+		(*md)["fs_type"] = fs
+		(*md)["fs_args"] = fsargs
+	}
 	(*md)["access_mode"] = mo
 	co.Debugf(ctxt, "VolumeMetadata: %#v", *md)
 }

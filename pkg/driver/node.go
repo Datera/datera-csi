@@ -16,12 +16,6 @@ import (
 
 func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	ctxt := d.InitFunc(ctx, "node", "NodeStageVolume", *req)
-	md := &dc.VolMetadata{}
-	vc := req.VolumeCapability
-	if vc == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
-	}
-	RegisterVolumeCapability(ctxt, md, vc)
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -29,10 +23,19 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if req.StagingTargetPath == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
 	}
+	vc := req.VolumeCapability
+	if vc == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
+	}
 	vol, err := d.dc.GetVolume(vid, false, true)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
+	md, err := vol.GetMetadata()
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	RegisterVolumeCapability(ctxt, md, vc)
 	// Setup ACL
 	init, err := d.dc.CreateGetInitiator()
 	if err != nil {
@@ -70,9 +73,9 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
 		(*md)["mount_path"] = vol.MountPath
-		if _, err = vol.SetMetadata(md); err != nil {
-			return nil, status.Errorf(codes.Unknown, err.Error())
-		}
+	}
+	if _, err = vol.SetMetadata(md); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	return &csi.NodeStageVolumeResponse{}, nil
 }
