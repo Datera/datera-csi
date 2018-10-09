@@ -2,19 +2,35 @@ package client
 
 import (
 	"context"
+	"math/rand"
+	"time"
 
 	iscsi "github.com/j-griffith/csi-connectors/iscsi"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 )
 
-func (v *Volume) Login(multipath bool) error {
+func robin() int {
+	// Gen new source each time
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+	return r.Intn(2)
+}
+
+func (v *Volume) Login(multipath, round_robin bool) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Login")
 	co.Debugf(ctxt, "Login invoked for %s.  Multipath: %t", v.Name, multipath)
 	var ips []string
 	if multipath {
-		ips = v.Ips
+		if round_robin {
+			ips = []string{v.Ips[robin()]}
+		} else {
+			ips = v.Ips
+		}
 	} else {
+		if round_robin {
+			co.Warningf(ctxt, "round_robin not supported on non-multipath environments")
+		}
 		ips = []string{v.Ips[0]}
 	}
 	c := iscsi.Connector{
