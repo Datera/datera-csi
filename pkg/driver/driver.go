@@ -234,9 +234,10 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 		return
 	}
 	var (
-		at string
-		fs string
-		mo string
+		at     string
+		fs     string
+		fsargs string
+		mo     string
 	)
 	if vc.GetAccessMode() != nil {
 		mo = vc.GetAccessMode().Mode.String()
@@ -246,16 +247,18 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 		at = "block"
 	case *csi.VolumeCapability_Mount:
 		at = "mount"
-		fs = vc.GetMount().FsType + " " + strings.Join(vc.GetMount().MountFlags, "")
-		co.Debugf(ctxt, "Registering Filesystem %s", fs)
+		fs = vc.GetMount().FsType
+		fsargs = strings.Join(vc.GetMount().MountFlags, "")
+		co.Debugf(ctxt, "Registering Filesystem %s %s", fs, fsargs)
 	default:
 		at = "unknown"
 	}
 	co.Debugf(ctxt, "Registering VolumeCapability %s", at)
 	co.Debugf(ctxt, "Registering VolumeCapability %s", mo)
-	(*md)["access-type"] = at
-	(*md)["access-fs"] = fs
-	(*md)["access-mode"] = mo
+	(*md)["access_type"] = at
+	(*md)["fs_type"] = fs
+	(*md)["fs_args"] = fsargs
+	(*md)["access_mode"] = mo
 	co.Debugf(ctxt, "VolumeMetadata: %#v", *md)
 }
 

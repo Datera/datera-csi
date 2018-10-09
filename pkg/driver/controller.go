@@ -217,7 +217,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		req.Name = req.Name[:100]
 		co.Warningf(ctxt, "Limiting display-name to 100 characters: %s", req.Name)
 	}
-	(*md)["display-name"] = req.Name
+	(*md)["display_name"] = req.Name
 	registerMdFromCtxt(ctxt, md)
 
 	vcs := req.VolumeCapabilities

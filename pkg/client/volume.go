@@ -178,7 +178,6 @@ func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool
 		if err != nil {
 			return nil, err
 		}
-		fs := strings.Split((*md)["access-fs"], " ")
 		var fm bool
 		fmj, ok := (*md)["formatted"]
 		if !ok || fmj == "false" {
@@ -186,13 +185,9 @@ func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool
 		} else {
 			fm = true
 		}
-		fsType, fsArgs := "", []string{}
-		if len(fs) >= 2 {
-			fsType = fs[0]
-			fsArgs = fs[1:]
-		}
-		vol.DevicePath = (*md)["device-path"]
-		vol.MountPath = (*md)["mount-path"]
+		fsType, fsArgs := (*md)["fs_type"], strings.Split((*md)["fs_args"], " ")
+		vol.DevicePath = (*md)["device_path"]
+		vol.MountPath = (*md)["mount_path"]
 		vol.BindMountPaths = dsdk.NewStringSet(10, strings.Split((*md)["bind-mount-paths"], " ")...)
 		vol.FsType = fsType
 		vol.FsArgs = fsArgs

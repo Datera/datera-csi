@@ -41,23 +41,24 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if err = vol.RegisterAcl(init); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	// Setup IpPool
 
+	// Setup IpPool
+	if ipp, err := d.dc.GetIpPoolFromName((*md)["ip_pool"]); err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	} else {
+		if err = vol.RegisterIpPool(ipp); err != nil {
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
+	}
 	// Login to target
-	err = vol.Login(!d.env.DisableMultipath)
-	if err != nil {
+	if err = vol.Login(!d.env.DisableMultipath); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	(*md)["device-path"] = vol.DevicePath
+	(*md)["device_path"] = vol.DevicePath
 	// TODO: Add support for Block capability when CSI officially suports it
-	if fs, ok := (*md)["access-fs"]; ok {
+	if fs := (*md)["fs_type"]; fs != "" {
 		// Mount Device
-		parts := strings.Split(fs, " ")
-		fsType, fsArgs := parts[0], parts[1:]
-		if fsType == "" {
-			fsType = "ext4"
-		}
-		(*md)["access-fs"] = "ext4"
+		fsType, fsArgs := fs, strings.Split((*md)["fs_args"], " ")
 		err = vol.Format(fsType, fsArgs)
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
@@ -68,7 +69,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
-		(*md)["mount-path"] = vol.MountPath
+		(*md)["mount_path"] = vol.MountPath
 		if _, err = vol.SetMetadata(md); err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
@@ -97,7 +98,7 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 		co.Warning(ctxt, err)
 	}
 	md := &dc.VolMetadata{}
-	(*md)["mount-path"] = ""
+	(*md)["mount_path"] = ""
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
@@ -126,20 +127,17 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
 	}
 	md, err := vol.GetMetadata()
-	RegisterVolumeCapability(ctxt, md, vc)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, err.Error())
-	}
-	for _, bm := range strings.Split((*md)["bind-mount"], ",") {
+	RegisterVolumeCapability(ctxt, md, vc)
+	for _, bm := range strings.Split((*md)["bind_mount"], ",") {
 		vol.BindMountPaths.Add(bm)
 	}
 	if err = vol.BindMount(req.TargetPath); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	(*md)["bind-mount"] = strings.Join(vol.BindMountPaths.List(), ",")
+	(*md)["bind_mount"] = strings.Join(vol.BindMountPaths.List(), ",")
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
@@ -167,7 +165,7 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	for _, bm := range strings.Split((*md)["bind-mount"], ",") {
+	for _, bm := range strings.Split((*md)["bind_mount"], ",") {
 		vol.BindMountPaths.Add(bm)
 	}
 	if _, err = vol.SetMetadata(md); err != nil {
