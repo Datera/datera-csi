@@ -374,14 +374,30 @@ func (r *Volume) SetPerformancePolicy(volOpts *VolOpts) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "SetPerformancePolicy")
 	co.Debugf(ctxt, "SetPerformancePolicy invoked for %s, volOpts: %#v", r.Name, volOpts)
 	ai := r.Ai
+	im := volOpts.TotalIopsMax
+	bm := volOpts.TotalBandwidthMax
+	if volOpts.IopsPerGb != 0 {
+		ipg := volOpts.IopsPerGb * volOpts.Size
+		// Not using zero, because zero means unlimited
+		if ipg < im {
+			im = ipg
+		}
+	}
+	if volOpts.BandwidthPerGb != 0 {
+		bpg := volOpts.BandwidthPerGb * volOpts.Size
+		// Not using zero, because zero means unlimited
+		if bpg < bm {
+			bm = bpg
+		}
+	}
 	pp := dsdk.PerformancePolicyCreateRequest{
 		Ctxt:              ctxt,
 		ReadIopsMax:       int(volOpts.ReadIopsMax),
 		WriteIopsMax:      int(volOpts.WriteIopsMax),
-		TotalIopsMax:      int(volOpts.TotalIopsMax),
+		TotalIopsMax:      int(im),
 		ReadBandwidthMax:  int(volOpts.ReadBandwidthMax),
 		WriteBandwidthMax: int(volOpts.WriteBandwidthMax),
-		TotalBandwidthMax: int(volOpts.TotalBandwidthMax),
+		TotalBandwidthMax: int(bm),
 	}
 	resp, apierr, err := ai.StorageInstances[0].Volumes[0].PerformancePolicy.Create(&pp)
 	if err != nil {
