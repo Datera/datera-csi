@@ -1,0 +1,4 @@
+ruamel.yaml
+requests
+urllib3
+git+http://github.com/Datera/python-sdk

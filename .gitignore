@@ -12,3 +12,4 @@
 *.out
 dat-csi-plugin
 !dat-csi-plugin/
+*.tests
