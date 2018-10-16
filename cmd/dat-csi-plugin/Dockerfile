@@ -13,4 +13,4 @@ RUN apk add --no-cache ca-certificates \
 ADD assets/driver-logrotate /etc/logrotate.d/
 ADD cmd/dat-csi-plugin/dat-csi-plugin /bin/
 
-ENTRYPOINT ["/bin/dat-csi-plugin | tee /var/log/driver.log"]
+ENTRYPOINT [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
