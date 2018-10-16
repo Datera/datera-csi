@@ -207,7 +207,7 @@ func (d *Driver) Stop() {
 func (d *Driver) Heartbeater() {
 	ctxt := co.WithCtxt(context.Background(), "Heartbeat")
 	co.Infof(ctxt, "Starting heartbeat service. Interval: %d", d.env.Heartbeat)
-	t := int(time.Second * time.Duration(d.env.Heartbeat))
+	t := d.env.Heartbeat
 	for {
 		if err := d.dc.HealthCheck(); err != nil {
 			co.Errorf(ctxt, "Heartbeat failure: %s\n", err)
@@ -219,7 +219,9 @@ func (d *Driver) Heartbeater() {
 func (d *Driver) LogPusher() {
 	ctxt := co.WithCtxt(context.Background(), "LogPusher")
 	co.Infof(ctxt, "Starting LogPusher service. Interval: %d", d.env.LogPushInterval)
-	t := int(time.Second * time.Duration(d.env.LogPushInterval))
+	t := d.env.LogPushInterval
+	// Give the driver a chance to start before doing first log collect
+	Sleeper(10)
 	for {
 		if err := d.dc.LogPush(ctxt, "/etc/logrotate.d/driver-logrotate", "/var/log/driver.log.1.gz"); err != nil {
 			co.Errorf(ctxt, "LogPush failure: %s\n", err)
