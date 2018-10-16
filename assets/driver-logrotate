@@ -1,0 +1,5 @@
+/var/log/driver.log {
+    rotate 1
+    copytruncate
+    compress
+}
