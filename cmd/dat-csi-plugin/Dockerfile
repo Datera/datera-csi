@@ -10,7 +10,7 @@ RUN apk add --no-cache ca-certificates \
                        open-iscsi
 
 
-ADD ../../assets/driver-logrotate /etc/logrotate.d/
-ADD dat-csi-plugin /bin/
+ADD assets/driver-logrotate /etc/logrotate.d/
+ADD cmd/dat-csi-plugin/dat-csi-plugin /bin/
 
 ENTRYPOINT ["/bin/dat-csi-plugin | tee /var/log/driver.log"]

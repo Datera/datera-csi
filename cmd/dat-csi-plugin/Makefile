@@ -35,8 +35,8 @@ clean:
 
 build: compile
 	@echo "==> Building Docker Image Latest"
-	@docker build -t "dateraiodev/dat-csi-plugin:latest" . -f Dockerfile
+	@docker build -t "dateraiodev/dat-csi-plugin:latest" ../.. -f Dockerfile
 
 build-release: compile
 	@echo "==> Building Docker Image $(VERSION)"
-	@docker build -t "dateraiodev/dat-csi-plugin:$(VERSION)" . -f Dockerfile
+	@docker build -t "dateraiodev/dat-csi-plugin:$(VERSION)" ../.. -f Dockerfile
