@@ -31,6 +31,8 @@ const (
 	EnvDisableMultipath = "DAT_DISABLE_MULTIPATH"
 	EnvReplicaOverride  = "DAT_REPLICA_OVERRIDE"
 	EnvMetadataDebug    = "DAT_METADATA_DEBUG"
+	EnvDisableLogPush   = "DAT_DISABLE_LOGPUSH"
+	EnvLogPushInterval  = "DAT_LOGPUSH_INTERVAL"
 
 	IdentityType = iota + 1
 	ControllerType
@@ -62,6 +64,8 @@ type EnvVars struct {
 	ReplicaOverride  bool
 	Heartbeat        int
 	MetadataDebug    bool
+	LogPush          bool
+	LogPushInterval  int
 }
 
 func readEnvVars() *EnvVars {
@@ -89,6 +93,14 @@ func readEnvVars() *EnvVars {
 	if d := os.Getenv(EnvDisableMultipath); d != "" {
 		mdd = true
 	}
+	lp := true
+	if d := os.Getenv(EnvDisableLogPush); d != "" && d != "false" {
+		lp = false
+	}
+	lpi, err := strconv.ParseInt(os.Getenv(EnvLogPushInterval), 0, 0)
+	if err != nil {
+		lpi = int64(time.Hour * 12)
+	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
@@ -97,6 +109,8 @@ func readEnvVars() *EnvVars {
 		Type:             StrToType[os.Getenv(EnvType)],
 		Heartbeat:        int(hb64),
 		MetadataDebug:    mdd,
+		LogPush:          lp,
+		LogPushInterval:  int(lpi),
 	}
 }
 
@@ -160,11 +174,6 @@ func (d *Driver) Run() error {
 		co.Errorf(ctxt, "Failed to remove unix domain socket file: %s", addr)
 		return err
 	}
-	// co.Infof(ctxt, "Creating socket: %s\n", addr)
-	// _, err = os.Create(addr)
-	// if err != nil {
-	// 	return err
-	// }
 	listener, err := net.Listen(u.Scheme, addr)
 	if err != nil {
 		co.Errorf(ctxt, "Error starting listener for address: %s", addr)
@@ -185,6 +194,7 @@ func (d *Driver) Run() error {
 	}
 	co.Infof(ctxt, "Datera CSI Driver Serving On Socket: %s\n", addr)
 	go d.Heartbeater()
+	go d.LogPusher()
 	return d.gs.Serve(listener)
 }
 
@@ -197,12 +207,24 @@ func (d *Driver) Stop() {
 func (d *Driver) Heartbeater() {
 	ctxt := co.WithCtxt(context.Background(), "Heartbeat")
 	co.Infof(ctxt, "Starting heartbeat service. Interval: %d", d.env.Heartbeat)
-	t := time.Second * time.Duration(d.env.Heartbeat)
+	t := int(time.Second * time.Duration(d.env.Heartbeat))
 	for {
 		if err := d.dc.HealthCheck(); err != nil {
 			co.Errorf(ctxt, "Heartbeat failure: %s\n", err)
 		}
-		time.Sleep(t)
+		Sleeper(t)
+	}
+}
+
+func (d *Driver) LogPusher() {
+	ctxt := co.WithCtxt(context.Background(), "LogPusher")
+	co.Infof(ctxt, "Starting LogPusher service. Interval: %d", d.env.Heartbeat)
+	t := int(time.Second * time.Duration(d.env.LogPushInterval))
+	for {
+		if err := d.dc.LogPush(ctxt, "/var/log/driver.log", "/var/log/driver.log.1"); err != nil {
+			co.Errorf(ctxt, "LogPush failure: %s\n", err)
+		}
+		Sleeper(t)
 	}
 }
 
@@ -266,4 +288,15 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 
 func GetClientForTests(d *Driver) *dc.DateraClient {
 	return d.dc
+}
+
+// For finer grained sleeping, interval is specified in seconds
+func Sleeper(interval int) {
+	for {
+		if interval <= 0 {
+			break
+		}
+		time.Sleep(time.Second * 1)
+		interval--
+	}
 }
