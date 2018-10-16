@@ -99,7 +99,7 @@ func readEnvVars() *EnvVars {
 	}
 	lpi, err := strconv.ParseInt(os.Getenv(EnvLogPushInterval), 0, 0)
 	if err != nil {
-		lpi = int64(time.Hour * 12)
+		lpi = int64((time.Hour * 12) / time.Second)
 	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
@@ -218,7 +218,7 @@ func (d *Driver) Heartbeater() {
 
 func (d *Driver) LogPusher() {
 	ctxt := co.WithCtxt(context.Background(), "LogPusher")
-	co.Infof(ctxt, "Starting LogPusher service. Interval: %d", d.env.Heartbeat)
+	co.Infof(ctxt, "Starting LogPusher service. Interval: %d", d.env.LogPushInterval)
 	t := int(time.Second * time.Duration(d.env.LogPushInterval))
 	for {
 		if err := d.dc.LogPush(ctxt, "/var/log/driver.log", "/var/log/driver.log.1"); err != nil {
