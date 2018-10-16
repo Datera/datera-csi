@@ -221,7 +221,7 @@ func (d *Driver) LogPusher() {
 	co.Infof(ctxt, "Starting LogPusher service. Interval: %d", d.env.LogPushInterval)
 	t := int(time.Second * time.Duration(d.env.LogPushInterval))
 	for {
-		if err := d.dc.LogPush(ctxt, "/var/log/driver.log", "/var/log/driver.log.1"); err != nil {
+		if err := d.dc.LogPush(ctxt, "/etc/logrotate.d/driver-logrotate", "/var/log/driver.log.1.gz"); err != nil {
 			co.Errorf(ctxt, "LogPush failure: %s\n", err)
 		}
 		Sleeper(t)
@@ -284,10 +284,6 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	}
 	(*md)["access_mode"] = mo
 	co.Debugf(ctxt, "VolumeMetadata: %#v", *md)
-}
-
-func GetClientForTests(d *Driver) *dc.DateraClient {
-	return d.dc
 }
 
 // For finer grained sleeping, interval is specified in seconds

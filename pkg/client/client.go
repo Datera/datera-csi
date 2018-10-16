@@ -45,5 +45,6 @@ func (r *DateraClient) HealthCheck() error {
 }
 
 func (r *DateraClient) LogPush(ctxt context.Context, rule, rotated string) error {
+	ctxt = r.WithContext(ctxt)
 	return r.sdk.LogsUpload.RotateUploadRemove(ctxt, rule, rotated)
 }
