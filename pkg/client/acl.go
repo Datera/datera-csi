@@ -27,7 +27,7 @@ type Initiator struct {
 func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateGetInitiator")
 	co.Debugf(ctxt, "CreateGetInitiator invoked")
-	iqn, err := getClientIqn(ctxt)
+	iqn, err := GetClientIqn(ctxt)
 	if err != nil {
 		co.Error(ctxt, err)
 		return nil, err
@@ -118,7 +118,7 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 	return nil
 }
 
-func getClientIqn(ctxt context.Context) (string, error) {
+func GetClientIqn(ctxt context.Context) (string, error) {
 	// Parse InitiatorName
 	dat, err := ioutil.ReadFile(initiatorFile)
 	if err != nil {

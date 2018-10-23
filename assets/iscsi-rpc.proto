@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package iscsi_rpc;
+
+service Iscsiadm {
+    rpc SendArgs(SendArgsRequest) returns (SendArgsReply) {}
+    rpc GetInitiatorName(GetInitiatorNameRequest) returns (GetInitiatorNameReply) {}
+}
+
+message SendArgsRequest {
+    string args = 1;
+}
+
+message SendArgsReply {
+    string result = 1;
+}
+
+message GetInitiatorNameRequest {
+}
+
+message GetInitiatorNameReply {
+    string name = 1;
+}

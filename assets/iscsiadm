@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/bin/iscsi-send -addr /iscsi-socket/iscsi.sock -args "$@"

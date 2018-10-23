@@ -14,34 +14,7 @@ spec:
         app: iscsi
     spec:
       hostNetwork: true
-
-      initContainers:
-      - name: install
-        image: "dateraiodev/iscsi:v1.0.0"
-        command:
-        - cp
-        args:
-        - -f
-        - /usr/bin/iscsiadm
-        - /usr/sbin/tgtadm
-        - /host-bin
-        volumeMounts:
-        - name: bin
-          mountPath: /host-bin
-
       containers:
-      - name: tgtd
-        imagePullPolicy: Always
-        image: "dateraiodev/iscsi:v1.0.0"
-        command: [ "tgtd-run.sh" ]
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - name: run
-          mountPath: "/run"
-        #- name: stor
-        #  mountPath: /stor
-        #  mountPropagation: HostToContainer
       - name: iscsid
         imagePullPolicy: Always
         image: "dateraiodev/iscsi:v1.0.0"
@@ -49,31 +22,8 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
-        - name: modules
-          mountPath: "/lib/modules"
-        - name: dev
           mountPath: "/dev"
-        - name: run
-          mountPath: "/run"
-        - name: etc-iscsi
-          mountPath: "/etc/iscsi"
-
       volumes:
-      - name: modules
-        hostPath:
-          path: "/lib/modules"
-      - name: run
-        hostPath:
-          path: "/run"
       - name: dev
         hostPath:
           path: "/dev"
-      - name: bin
-        hostPath:
-          path: "/usr/local/bin"
-      - name: etc-iscsi
-        hostPath:
-          path: "/etc/iscsi"
-      #- name: stor
-      #  hostPath:
-      #    path: "/stor"
