@@ -156,15 +156,11 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	err = vol.UnBindMount(req.TargetPath)
-	if err != nil {
-		co.Warning(ctxt, err)
-	}
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	d.InitFunc(ctx, "node", "NodeUnpublishVolume", *req)
+	ctxt := d.InitFunc(ctx, "node", "NodeUnpublishVolume", *req)
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -181,10 +177,14 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	for _, bm := range strings.Split((*md)["bind_mount"], ",") {
-		vol.BindMountPaths.Add(bm)
+		vol.BindMountPaths.Delete(bm)
 	}
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	err = vol.UnBindMount(req.TargetPath)
+	if err != nil {
+		co.Warning(ctxt, err)
 	}
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
