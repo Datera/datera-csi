@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -115,6 +116,14 @@ func mount(ctxt context.Context, device, dest string, options []string) error {
 		if err != nil {
 			return err
 		}
+	}
+	if strings.Contains(device, ":") {
+		cmd := []string{"readlink", "-f", device}
+		out, err := co.RunCmd(ctxt, cmd...)
+		if err != nil {
+			return err
+		}
+		device = out
 	}
 	// Mount to directory
 	cmd := append([]string{"mount", device, dest}, options...)
