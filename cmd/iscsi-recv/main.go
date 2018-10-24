@@ -5,6 +5,7 @@ import (
 	"flag"
 	"net"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,10 @@ const (
 )
 
 var (
-	addr = flag.String("addr", address, "Address to send on")
+	// Necessary to prevent UDC arguments from showing up
+	cli = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	addr = cli.String("addr", address, "Address to send on")
 )
 
 // server is used to implement helloworld.GreeterServer.
@@ -50,7 +54,7 @@ func (s *server) GetInitiatorName(ctx context.Context, in *pb.GetInitiatorNameRe
 }
 
 func main() {
-	flag.Parse()
+	cli.Parse(os.Args[1:])
 
 	ctx := co.WithCtxt(context.Background(), "iscsi-recv")
 	u, err := url.Parse(*addr)

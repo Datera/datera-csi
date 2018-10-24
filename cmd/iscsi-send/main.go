@@ -20,8 +20,11 @@ const (
 )
 
 var (
-	addr = flag.String("addr", address, "Address to send on")
-	args = flag.String("args", "", "Arguments including iscsiadm prefix")
+	// Necessary to prevent UDC arguments from showing up
+	cli = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	addr = cli.String("addr", address, "Address to send on")
+	args = cli.String("args", "", "Arguments including iscsiadm prefix")
 )
 
 func setupInitName(ctxt context.Context, c pb.IscsiadmClient) {
@@ -45,7 +48,7 @@ func setupInitName(ctxt context.Context, c pb.IscsiadmClient) {
 }
 
 func main() {
-	flag.Parse()
+	cli.Parse(os.Args[1:])
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(*addr, grpc.WithInsecure())
 	if err != nil {
