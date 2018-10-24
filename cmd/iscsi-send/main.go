@@ -16,7 +16,8 @@ import (
 
 const (
 	address  = "unix:///iscsi-socket/iscsi.sock"
-	etcIscsi = "/etc/iscsi/initiatorname.iscsi"
+	etcIscsi = "/etc/iscsi"
+	iname    = "/etc/iscsi/initiatorname.iscsi"
 )
 
 var (
@@ -40,7 +41,7 @@ func setupInitName(ctxt context.Context, c pb.IscsiadmClient) {
 			co.Fatal(ctxt, err)
 		}
 		name := fmt.Sprintf("InitiatorName=%s", resp.Name)
-		err = ioutil.WriteFile(etcIscsi, []byte(name), 0644)
+		err = ioutil.WriteFile(iname, []byte(name), 0644)
 		if err != nil {
 			co.Fatal(ctxt, err)
 		}
