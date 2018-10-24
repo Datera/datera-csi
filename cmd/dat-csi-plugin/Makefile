@@ -5,24 +5,29 @@ NAME=dat-csi-plugin
 compile:
 	@echo "==> Building the Datera CSI Driver Version ${VERSION}"
 	@env go get -d ./...
-	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'"
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'" github.com/Datera/datera-csi/cmd/dat-csi-plugin
 	@env go vet ./...
 
 iscsi-rpc:
 	@echo "==> Building iscsi-rpc"
 	@env go get -d ./...
-	@cd ../iscsi-send
-	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-send
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-send github.com/Datera/datera-csi/cmd/iscsi-send
 	@env go vet ./...
-	@cd ../iscsi-recv
-	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-recv
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-recv github.com/Datera/datera-csi/cmd/iscsi-recv
 	@env go vet ./...
-	@cd ../dat-csi-plugin/
 
 
 local:
 	@echo "==> Building the Datera CSI Driver Version ${VERSION} For Local System"
-	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'"
+	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'" github.com/Datera/datera-csi/cmd/dat-csi-plugin
+	@env go vet ./...
+
+iscsi-rpc-local:
+	@echo "==> Building iscsi-rpc"
+	@env go get -d ./...
+	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-send github.com/Datera/datera-csi/cmd/iscsi-send
+	@env go vet ./...
+	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-recv github.com/Datera/datera-csi/cmd/iscsi-recv
 	@env go vet ./...
 
 test:
