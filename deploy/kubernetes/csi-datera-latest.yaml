@@ -5,27 +5,26 @@
 #
 # Pieces
 # ------
+# * datera storage class
+# CONTROLLER
 # * csi-provisioner
 #   . provisioner service account
 #   . provisioner cluster role
 #   . provisioner cluster role binding
 #   . provisioner service
 #   . provisioner statefulset
-# * csi-snapshotter (probably gonna be included with csi-provisioner)
-#   . snapshotter service account
-#   . snapshotter cluster role
-#   . snapshotter cluster role binding
-#   . snapshotter service
-#   . snapshotter statefulset
+# * csi-attacher
+# * csi-snapshotter
+# * datera-plugin (controller)
+# NODE
 # * driver-registrar
 #   . driver-registrar service account
 #   . driver-registrar cluster role
 #   . driver-registrar cluster role binding
 #   . driver-registrar service?
 #   . driver-registrar daemonset
-# * datera-plugin (controller)
+# * iscsid
 # * datera-plugin (node/identity)
-# * datera storage class
 #
 #
 # #################################
@@ -118,6 +117,9 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["create", "list", "watch", "delete"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -167,7 +169,7 @@ spec:
       serviceAccount: csi-provisioner
       containers:
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v0.4.1
+          image: quay.io/k8scsi/csi-provisioner:v0.4.0
           args:
             - "--provisioner=io.datera.csi.dsp"
             - "--csi-address=$(DAT_SOCKET)"
@@ -176,6 +178,18 @@ spec:
             - name: DAT_SOCKET
               value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
           imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/
+        - name: csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v0.4.0
+          args:
+            - "--csi-address=$(DAT_SOCKET)"
+            - "--v=5"
+          env:
+            - name: DAT_SOCKET
+              # value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              value: /var/lib/csi/io.daterainc.csi.dsp/csi.sock
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/
@@ -194,17 +208,18 @@ spec:
               mountPath: /var/lib/csi/
         - name: dat-csi-plugin-controller
           image: dateraiodev/dat-csi-plugin:latest
+          command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
               value: conident
             - name: DAT_SOCKET
               value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
             - name: DAT_MGMT
-              value: 172.19.1.41
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
-              value: pass
+              value: password
             - name: DAT_TENANT
               value: /root
             - name: DAT_API
@@ -284,52 +299,94 @@ spec:
           args:
             - "--v=5"
             - "--csi-address=$(DAT_SOCKET)"
-            - "--kubelet-registration-path="
+            - "--kubelet-registration-path=$(REG_SOCKET)"
           env:
             - name: DAT_SOCKET
               #value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
-              value: /var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              value: /csi/csi.sock
+            - name: REG_SOCKET
+              value: /var/lib/kubelet/plugins/io.daterainc.csi.dsp/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/csi
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+        - name: iscsid
+          imagePullPolicy: Always
+          image: dateraiodev/iscsi:latest
+          command: [ "/bin/bash", "-c", "iscsi-recv &2>1 & iscsid-run.sh" ]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: devices
+              mountPath: /dev
+            - name: iscsi-socket
+              mountPath: /iscsi-socket
         - name: dat-csi-plugin-node
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
           image: dateraiodev/dat-csi-plugin:latest
+          # The sleep is to allow the iscsid sidecar to start Running iscsiadm
+          # -m session initializes /etc/iscsi/initiatorname.iscsi in this
+          # container
+          command: [ "/bin/sh", "-c", "sleep 2; iscsiadm -m session; /bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
               value: nodeident
             - name: DAT_SOCKET
-              value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              value: unix:///csi/csi.sock
             - name: DAT_MGMT
-              value: 172.19.1.41
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
-              value: pass
+              value: password
             - name: DAT_TENANT
               value: /root
             - name: DAT_API
               value: "2.2"
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: "/var/lib/csi"
-            - name: mounts
-              mountPath: "/mnt"
-            - name: etc-iscsi
-              mountPath: "/etc/iscsi"
+              mountPath: /csi
+            - name: kubelet-plugins-k
+              mountPath: /var/lib/kubelet/plugins/kubernetes.io
+              mountPropagation: Bidirectional
+            - name: kubelet-pod
+              mountPath: /var/lib/kubelet/pods
+              mountPropagation: Bidirectional
+            - name: devices
+              mountPath: /dev
+            - name: iscsi-socket
+              mountPath: /iscsi-socket
       volumes:
         - name: socket-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/io.daterainc.csi.dsp
+            type: DirectoryOrCreate
+        - name: kubelet-plugins-k
+          hostPath:
+            path: /var/lib/kubelet/plugins/kubernetes.io
+        - name: kubelet-pod
+          hostPath:
+            path: /var/lib/kubelet/pods
+        - name: iscsi-socket
           emptyDir: {}
-        - name: mounts
-          hostPath:
-            path: "/mnt"
-        - name: etc-iscsi
-          hostPath:
-            path: "/etc/iscsi"
         - name: devices
           hostPath:
-            path: "/dev"
+            path: /dev
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/
