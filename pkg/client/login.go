@@ -3,9 +3,10 @@ package client
 import (
 	"context"
 	"math/rand"
+	"os"
 	"time"
 
-	iscsi "github.com/j-griffith/csi-connectors/iscsi"
+	iscsi "github.com/kubernetes-csi/csi-lib-iscsi/iscsi"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 )
@@ -61,4 +62,8 @@ func (v *Volume) Logout() error {
 	}
 	v.DevicePath = ""
 	return nil
+}
+
+func init() {
+	iscsi.EnableDebugLogging(os.Stdout)
 }
