@@ -14,5 +14,7 @@ dat-csi-plugin
 !dat-csi-plugin/
 *.tests
 iscsi-send
+!iscsi-send/
 iscsi-recv
+!iscsi-recv/
 main
