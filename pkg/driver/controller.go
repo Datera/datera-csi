@@ -51,6 +51,9 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	if _, ok := params["template"]; !ok {
 		params["template"] = ""
 	}
+	if _, ok := params["disable_template_override"]; !ok {
+		params["disable_template_override"] = "false"
+	}
 	if _, ok := params["read_iops_max"]; !ok {
 		params["read_iops_max"] = "0"
 	}
@@ -102,6 +105,11 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	vo.Replica = int(val)
 	vo.IpPool = params["ip_pool"]
 	vo.Template = params["template"]
+	b, err = strconv.ParseBool(params["disable_template_override"])
+	if err != nil {
+		return nil, err
+	}
+	vo.DisableTemplateOverride = b
 	val, err = strconv.ParseInt(params["read_iops_max"], 10, 0)
 	if err != nil {
 		return nil, err

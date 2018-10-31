@@ -13,18 +13,19 @@ import (
 )
 
 type VolOpts struct {
-	Size            int      `json:"size,omitempty"`
-	Replica         int      `json:"replica,omitempty"`
-	Template        string   `json:"template,omitempty"`
-	FsType          string   `json:"fs_type,omitempty"`
-	FsArgs          []string `json:"fs_args,omitempty"`
-	PlacementMode   string   `json:"placement,omitempty"`
-	CloneSrc        string   `json:"clone_src,omitempty"`
-	CloneVolSrc     string   `json:"clone_vol_src,omitempty"`
-	CloneSnapSrc    string   `json:"clone_snap_src,omitempty"`
-	IpPool          string   `json:"ip_pool,omitempty"`
-	RoundRobin      bool     `json:"round_robin,omitempty"`
-	DeleteOnUnmount bool     `json:"delete_on_unmount,omitempty"`
+	Size                    int      `json:"size,omitempty"`
+	Replica                 int      `json:"replica,omitempty"`
+	Template                string   `json:"template,omitempty"`
+	FsType                  string   `json:"fs_type,omitempty"`
+	FsArgs                  []string `json:"fs_args,omitempty"`
+	PlacementMode           string   `json:"placement,omitempty"`
+	CloneSrc                string   `json:"clone_src,omitempty"`
+	CloneVolSrc             string   `json:"clone_vol_src,omitempty"`
+	CloneSnapSrc            string   `json:"clone_snap_src,omitempty"`
+	IpPool                  string   `json:"ip_pool,omitempty"`
+	RoundRobin              bool     `json:"round_robin,omitempty"`
+	DeleteOnUnmount         bool     `json:"delete_on_unmount,omitempty"`
+	DisableTemplateOverride bool     `json:"disable_template_override,omitempty"`
 
 	// QoS IOPS
 	WriteIopsMax int `json:"write_iops_max,omitempty"`
@@ -86,18 +87,19 @@ var MetadataDebug = false
 
 func (v VolOpts) ToMap() map[string]string {
 	return map[string]string{
-		"size":              strconv.FormatInt(int64(v.Size), 10),
-		"replica":           strconv.FormatInt(int64(v.Replica), 10),
-		"template":          v.Template,
-		"fs_type":           v.FsType,
-		"fs_args":           strings.Join(v.FsArgs, " "),
-		"placement":         v.PlacementMode,
-		"clone_src":         v.CloneSrc,
-		"clone_vol_src":     v.CloneVolSrc,
-		"clone_snap_src":    v.CloneSnapSrc,
-		"ip_pool":           v.IpPool,
-		"round_robin":       strconv.FormatBool(v.RoundRobin),
-		"delete_on_unmount": strconv.FormatBool(v.DeleteOnUnmount),
+		"size":                      strconv.FormatInt(int64(v.Size), 10),
+		"replica":                   strconv.FormatInt(int64(v.Replica), 10),
+		"template":                  v.Template,
+		"fs_type":                   v.FsType,
+		"fs_args":                   strings.Join(v.FsArgs, " "),
+		"placement":                 v.PlacementMode,
+		"clone_src":                 v.CloneSrc,
+		"clone_vol_src":             v.CloneVolSrc,
+		"clone_snap_src":            v.CloneSnapSrc,
+		"ip_pool":                   v.IpPool,
+		"round_robin":               strconv.FormatBool(v.RoundRobin),
+		"delete_on_unmount":         strconv.FormatBool(v.DeleteOnUnmount),
+		"disable_template_override": strconv.FormatBool(v.DisableTemplateOverride),
 
 		// QoS IOPS
 		"write_iops_max": strconv.FormatInt(int64(v.WriteIopsMax), 10),
@@ -235,6 +237,19 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 			Name:        name,
 			AppTemplate: at,
 		}
+		if !volOpts.DisableTemplateOverride {
+			ai.TemplateOverride = map[string]interface{}{
+				"storage_instances": map[string]interface{}{
+					"storage-1": map[string]interface{}{
+						"volumes": map[string]interface{}{
+							"volume-1": map[string]interface{}{
+								"size": strconv.FormatInt(int64(volOpts.Size), 10),
+							},
+						},
+					},
+				},
+			}
+		}
 	} else if volOpts.CloneVolSrc != "" {
 		// Clone Volume
 		c := &dsdk.Volume{Path: volOpts.CloneVolSrc}
@@ -281,7 +296,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 	}
 	v, err := aiToClientVol(ctxt, newAi, false, false, &r)
 	v.Formatted = false
-	if qos {
+	if qos && volOpts.Template == "" {
 		if err = v.SetPerformancePolicy(volOpts); err != nil {
 			return nil, err
 		}
