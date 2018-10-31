@@ -17,13 +17,20 @@ spec:
       containers:
       - name: iscsid
         imagePullPolicy: Always
-        image: "dateraiodev/iscsi:v1.0.0"
-        command: [ "iscsid-run.sh" ]
+        image: dateraiodev/iscsi:latest
+        command: [ "/bin/bash", "-c", "iscsi-recv &2>1 & iscsid-run.sh" ]
         securityContext:
           privileged: true
         volumeMounts:
-          mountPath: "/dev"
+          - name: devices
+            mountPath: /dev
+          - name: iscsi-socket
+            mountPath: /iscsi-socket
       volumes:
-      - name: dev
+      - name: devices
         hostPath:
-          path: "/dev"
+          path: /dev
+      - name: iscsi-socket
+        hostPath:
+          path: /var/lib/iscsi-socket
+          type: DirectoryOrCreate
