@@ -62,6 +62,9 @@ func main() {
 		co.Fatal(ctx, err)
 	}
 	addr := path.Join(u.Host, filepath.FromSlash(u.Path))
+	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
+		co.Fatalf(ctx, "Failed to remove unix domain socket file: %s", addr)
+	}
 	lis, err := net.Listen("unix", addr)
 	if err != nil {
 		co.Fatalf(ctx, "failed to listen: %v", err)
