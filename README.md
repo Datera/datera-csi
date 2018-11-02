@@ -4,11 +4,33 @@ This plugin uses Datera storage backend as distributed data storage for containe
 
 ## Kubernetes Installation/Configuration (Kubernetes v1.12+ required)
 
+First, the CSI plugin comes with iSCSID as a sidecar container within the Node
+Service pod of the plugin.  This pod is a DaemonSet so it will be run on every
+node in the cluster.
+
+Because iSCSID/open-iscsi doesn't support namespaces, you CANNOT install the
+plugin and have a separate iSCSID running on the same node.
+
+First ensure that each node in your kubernetes cluster is not running iSCSID
+by running the following
+
+```bash
+$ service iscsid stop
+```
+
+or
+
+```bash
+$ systemctl stop iscsid
+```
+
+Then you can proceed with installation
+
 ```bash
 $ git clone http://github.com/Datera/kubernetes-driver
 ```
 
-Modify csi/csi-datera-v0.1.0.yaml and update the values for the following
+Modify csi/csi-datera-latest.yaml and update the values for the following
 environment variables in the yaml:
 
 `DAT_MGMT`   -- The management IP of the Datera system
@@ -67,5 +89,95 @@ Name                   |     Default
 
 
 ```bash
-$ kubectl create -f csi/csi-datera-v0.1.0.yaml
+$ kubectl create -f csi/csi-datera-latest.yaml
 ```
+
+## Create A Volume
+
+Example PVC
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: dat-block-storage
+```
+
+```bash
+$ kubectl create -f pvc.yaml
+```
+
+## Create An Application Using the Volume
+
+Save the following as app.yaml
+```yaml
+kind: Pod
+apiVersion: v1
+metadata:
+  name: my-csi-app
+spec:
+  containers:
+    - name: my-app-image
+      image: alpine
+      volumeMounts:
+      - mountPath: "/data"
+        name: my-app-volume
+      command: [ "sleep", "1000000" ]
+  volumes:
+    - name: my-app-volume
+      persistentVolumeClaim:
+        claimName: mypvc
+```
+
+```bash
+$ kubectl create -f app.yaml
+```
+
+## Optional Secrets
+
+Instead of putting the username/password in the yaml file directly instead
+you can use the kubernetes secrets capabilities.
+
+NOTE: This must be done before installing the CSI driver.
+
+First create the secrets.  They're base64 encoded strings.  The two required
+secrets are "username" and "password".
+
+Modify and save the below yaml as secrets.yaml
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: datera-secret
+  namespace: kube-system
+type: Opaque
+data:
+  # base64 encoded username
+  # generate this via "$ echo -n 'your-username' | base64"
+  username: YWRtaW4=
+  # base64 encoded password
+  # generate this via "$ echo -n 'your-password' | base64"
+  password: cGFzc3dvcmQ=
+```
+Then create the secrets
+
+```bash
+$ kubectl create -f secrets.yaml
+```
+
+Now install the CSI driver like above, but using the "secrets" yaml:
+
+```bash
+$ kubectl create -f csi-datera-secrets-latest.yaml
+```
+
+The only difference between the "secrets" yaml and the regular yaml is the
+use of secrets for the "username" and "password" fields.
