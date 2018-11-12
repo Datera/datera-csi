@@ -26,6 +26,8 @@ spec:
             mountPath: /dev
           - name: iscsi-socket
             mountPath: /iscsi-socket
+          - name: libmod
+            mountPath: /lib/modules
       volumes:
       - name: devices
         hostPath:
@@ -34,3 +36,6 @@ spec:
         hostPath:
           path: /var/lib/iscsi-socket
           type: DirectoryOrCreate
+      - name: libmod
+        hostPath:
+          path: /lib/modules

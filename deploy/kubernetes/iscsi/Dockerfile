@@ -2,7 +2,6 @@ FROM ubuntu:16.04
 
 RUN apt-get update \
  && apt-get -y install open-iscsi \
-                       linux-image-4.4.0-138-generic \
                        multipath-tools \
  && echo GenerateName=yes > /etc/iscsi/initiatorname.iscsi
 
