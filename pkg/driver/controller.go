@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
+	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	units "github.com/docker/go-units"
 	codes "google.golang.org/grpc/codes"
 	gmd "google.golang.org/grpc/metadata"
@@ -207,8 +207,8 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
 				CapacityBytes: size,
-				Id:            vol.Name,
-				Attributes:    map[string]string{},
+				VolumeId:      vol.Name,
+				VolumeContext: map[string]string{},
 			},
 		}, nil
 	}
@@ -255,10 +255,10 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Handle req.VolumeContentSource
 	cs := req.VolumeContentSource
 	if snap := cs.GetSnapshot(); snap != nil {
-		if err = validateSnapId(snap.Id); err != nil {
+		if err = validateSnapId(snap.SnapshotId); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
-		params.CloneSnapSrc = snap.Id
+		params.CloneSnapSrc = snap.SnapshotId
 	}
 
 	// Handle req.CapacityRange
@@ -297,8 +297,8 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			CapacityBytes: int64(size * units.GiB),
-			Id:            vol.Name,
-			Attributes:    map[string]string{},
+			VolumeId:      vol.Name,
+			VolumeContext: map[string]string{},
 			ContentSource: nil,
 		},
 	}, nil
@@ -347,7 +347,7 @@ func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.Controlle
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	return &csi.ControllerPublishVolumeResponse{
-		PublishInfo: map[string]string{
+		PublishContext: map[string]string{
 			"controller_host": h,
 		},
 	}, nil
@@ -373,8 +373,11 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
 	return &csi.ValidateVolumeCapabilitiesResponse{
-		Supported: true,
-		Message:   "",
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeContext:      map[string]string{},
+			VolumeCapabilities: []*csi.VolumeCapability{},
+		},
+		Message: "",
 	}, nil
 }
 
@@ -398,8 +401,8 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 		rvols = append(rvols, &csi.ListVolumesResponse_Entry{
 			Volume: &csi.Volume{
 				CapacityBytes: int64(vol.Size * units.GiB),
-				Id:            vol.Name,
-				Attributes:    map[string]string{},
+				VolumeId:      vol.Name,
+				VolumeContext: map[string]string{},
 				ContentSource: nil,
 			},
 		})
@@ -504,14 +507,11 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 		Snapshot: &csi.Snapshot{
 			// We set the id to "<volume-id>:<snapshot-id>" since during delete requests
 			// we are not given the parent volume id
-			Id:             co.MkSnapId(vol.Name, snap.Id),
+			SnapshotId:     co.MkSnapId(vol.Name, snap.Id),
 			SourceVolumeId: vol.Name,
 			SizeBytes:      int64(vol.Size * units.GiB),
 			CreatedAt:      int64(ts),
-			Status: &csi.SnapshotStatus{
-				Type:    csi.SnapshotStatus_READY,
-				Details: snap.Status,
-			},
+			ReadyToUse:     true,
 		},
 	}, nil
 }
@@ -569,7 +569,7 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 		}
 		rsnaps = append(rsnaps, &csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
-				Id:             co.MkSnapId(snap.Vol.Name, snap.Id),
+				SnapshotId:     co.MkSnapId(snap.Vol.Name, snap.Id),
 				SizeBytes:      int64(snap.Vol.Size * units.GiB),
 				SourceVolumeId: snap.Vol.Name,
 				CreatedAt:      int64(ts),

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	csi "github.com/container-storage-interface/spec/lib/go/csi/v0"
+	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	units "github.com/docker/go-units"
 	log "github.com/sirupsen/logrus"
 	codes "google.golang.org/grpc/codes"
@@ -187,13 +187,6 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 		co.Warning(ctxt, err)
 	}
 	return &csi.NodeUnpublishVolumeResponse{}, nil
-}
-
-func (d *Driver) NodeGetId(ctx context.Context, req *csi.NodeGetIdRequest) (*csi.NodeGetIdResponse, error) {
-	d.InitFunc(ctx, "node", "NodeGetId", *req)
-	return &csi.NodeGetIdResponse{
-		NodeId: d.nid,
-	}, nil
 }
 
 func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
