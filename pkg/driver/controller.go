@@ -3,12 +3,15 @@ package driver
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	units "github.com/docker/go-units"
+	ptypes "github.com/golang/protobuf/ptypes"
 	codes "google.golang.org/grpc/codes"
 	gmd "google.golang.org/grpc/metadata"
 	status "google.golang.org/grpc/status"
@@ -412,6 +415,12 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 	}, nil
 }
 
+//TODO: Implement this function
+func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	d.InitFunc(ctx, "controller", "ControllerExpandVolume", *req)
+	return nil, status.Errorf(codes.Unimplemented, "ControllerExpandVolume is not currently implemented")
+}
+
 func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	ctxt := d.InitFunc(ctx, "controller", "GetCapacity", *req)
 	params, err := parseVolParams(ctxt, req.Parameters)
@@ -502,6 +511,11 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
+	sec, dec := math.Modf(ts)
+	pts, err := ptypes.TimestampProto(time.Unix(int64(sec), int64(dec)))
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
 	//TODO Implement snapshot polling before returning
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
@@ -510,7 +524,7 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 			SnapshotId:     co.MkSnapId(vol.Name, snap.Id),
 			SourceVolumeId: vol.Name,
 			SizeBytes:      int64(vol.Size * units.GiB),
-			CreatedAt:      int64(ts),
+			CreationTime:   pts,
 			ReadyToUse:     true,
 		},
 	}, nil
@@ -567,12 +581,17 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
+		sec, dec := math.Modf(ts)
+		pts, err := ptypes.TimestampProto(time.Unix(int64(sec), int64(dec)))
+		if err != nil {
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
 		rsnaps = append(rsnaps, &csi.ListSnapshotsResponse_Entry{
 			Snapshot: &csi.Snapshot{
 				SnapshotId:     co.MkSnapId(snap.Vol.Name, snap.Id),
 				SizeBytes:      int64(snap.Vol.Size * units.GiB),
 				SourceVolumeId: snap.Vol.Name,
-				CreatedAt:      int64(ts),
+				CreationTime:   pts,
 			},
 		})
 	}

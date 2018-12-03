@@ -189,6 +189,11 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
+func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	d.InitFunc(ctx, "node", "NodeExpandVolume", *req)
+	return nil, status.Errorf(codes.Unimplemented, "NodeExpandVolume in not currently implemented")
+}
+
 func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
 	return &csi.NodeGetCapabilitiesResponse{
