@@ -415,12 +415,6 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 	}, nil
 }
 
-//TODO: Implement this function
-func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	d.InitFunc(ctx, "controller", "ControllerExpandVolume", *req)
-	return nil, status.Errorf(codes.Unimplemented, "ControllerExpandVolume is not currently implemented")
-}
-
 func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	ctxt := d.InitFunc(ctx, "controller", "GetCapacity", *req)
 	params, err := parseVolParams(ctxt, req.Parameters)
@@ -459,7 +453,6 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 		csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
-		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	} {
 		addCap(t)
 	}
