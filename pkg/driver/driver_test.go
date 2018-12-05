@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	// csi "github.com/container-storage-interface/spec/lib/go/csi"
 	sanity "github.com/kubernetes-csi/csi-test/pkg/sanity"
 
 	udc "github.com/Datera/go-udc/pkg/udc"
