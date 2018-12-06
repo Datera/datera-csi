@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	driverName = "io.daterainc.csi.dsp"
+	driverName = "dsp.csi.daterainc.io"
 
 	// Environment Variables
 	EnvSocket           = "DAT_SOCKET"
