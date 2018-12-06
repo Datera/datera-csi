@@ -70,7 +70,7 @@ metadata:
   namespace: kube-system
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-provisioner: io.datera.csi.dsp
+provisioner: dsp.csi.datera.io
 parameters:
   replica_count: "3"
 
@@ -170,51 +170,54 @@ spec:
       hostNetwork: true
       containers:
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v0.4.0
+          imagePullPolicy: Always
+          image: quay.io/k8scsi/csi-provisioner:v1.0-canary
           args:
-            - "--provisioner=io.datera.csi.dsp"
+            - "--provisioner=dsp.csi.datera.io"
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
           env:
             - name: DAT_SOCKET
-              value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
-          imagePullPolicy: "IfNotPresent"
+              value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/
         - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v0.4.0
+          imagePullPolicy: Always
+          image: quay.io/k8scsi/csi-attacher:v1.0.0
           args:
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
           env:
             - name: DAT_SOCKET
-              # value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
-              value: /var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              # value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
+              value: /var/lib/csi/dsp.csi.daterainc.io/csi.sock
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/
         - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v0.4.1
+          imagePullPolicy: Always
+          image: quay.io/k8scsi/csi-snapshotter:v1.0-canary
           args:
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
           env:
             - name: DAT_SOCKET
-              #value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
-              value: /var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              #value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
+              value: /var/lib/csi/dsp.csi.daterainc.io/csi.sock
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/
         - name: dat-csi-plugin-controller
+          imagePullPolicy: Always
           image: dateraiodev/dat-csi-plugin:latest
           command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
               value: conident
             - name: DAT_SOCKET
-              value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
             - name: DAT_MGMT
               value: 1.1.1.1
             - name: DAT_USER
@@ -296,17 +299,20 @@ spec:
       hostNetwork: true
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v0.4.1
+          imagePullPolicy: Always
+          image: quay.io/k8scsi/driver-registrar:v1.0-canary
           args:
             - "--v=5"
             - "--csi-address=$(DAT_SOCKET)"
             - "--kubelet-registration-path=$(REG_SOCKET)"
+            - "--mode=node-register"
+            - "--pod-info-mount-version=\"v1\""
           env:
             - name: DAT_SOCKET
-              #value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
+              #value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
               value: /csi/csi.sock
             - name: REG_SOCKET
-              value: /var/lib/kubelet/plugins/io.daterainc.csi.dsp/csi.sock
+              value: /var/lib/kubelet/plugins_registry/dsp.csi.daterainc.io/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -330,6 +336,7 @@ spec:
             - name: libmod
               mountPath: /lib/modules
         - name: dat-csi-plugin-node
+          imagePullPolicy: Always
           securityContext:
             privileged: true
             capabilities:
@@ -348,7 +355,7 @@ spec:
             - name: DAT_MGMT
               value: 1.1.1.1
             - name: DAT_USER
-              value: admin
+              value: password
             - name: DAT_PASS
               value: password
             - name: DAT_TENANT
@@ -365,7 +372,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
             - name: kubelet-plugins-k
-              mountPath: /var/lib/kubelet/plugins/kubernetes.io
+              mountPath: /var/lib/kubelet/plugins_registry/kubernetes.io
               mountPropagation: Bidirectional
             - name: kubelet-pod
               mountPath: /var/lib/kubelet/pods
@@ -377,11 +384,11 @@ spec:
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/io.daterainc.csi.dsp
+            path: /var/lib/kubelet/plugins_registry/dsp.csi.daterainc.io
             type: DirectoryOrCreate
         - name: kubelet-plugins-k
           hostPath:
-            path: /var/lib/kubelet/plugins/kubernetes.io
+            path: /var/lib/kubelet/plugins_registry/kubernetes.io
         - name: kubelet-pod
           hostPath:
             path: /var/lib/kubelet/pods
@@ -392,7 +399,7 @@ spec:
             path: /dev
         - name: registration-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/
+            path: /var/lib/kubelet/plugins_registry/
         - name: libmod
           hostPath:
             path: /lib/modules
