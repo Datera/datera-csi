@@ -212,6 +212,9 @@ root     13327     1  0 Dec17 ?        00:00:05 /sbin/iscsid
 Clone the datera-csi repository
 ```bash
 $ git clone git@gits.daterainc.com:/datera-csi
+# Fake the external import location
+$ git mkdir -p ~/go/src/github.com/Datera
+$ git mv datera-csi ~/go/src/github.com/Datera/
 ```
 
 Build the iscsi-recv binary
