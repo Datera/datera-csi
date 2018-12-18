@@ -49,6 +49,7 @@ testcd:
 clean:
 	@echo "==> Cleaning artifacts"
 	@GOOS=linux go clean -i -x ./...
+	rm -f iscsi-recv iscsi-send
 
 build: compile iscsi-rpc
 	@echo "==> Building Docker Image Latest"
