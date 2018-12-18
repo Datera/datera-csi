@@ -2,14 +2,15 @@
 
 This plugin uses Datera storage backend as distributed data storage for containers.
 
-## Kubernetes Installation/Configuration (Kubernetes v1.12+ required)
+## Kubernetes Installation/Configuration (Kubernetes v1.13+ required)
 
 First, the CSI plugin comes with iSCSID as a sidecar container within the Node
 Service pod of the plugin.  This pod is a DaemonSet so it will be run on every
 node in the cluster.
 
 Because iSCSID/open-iscsi doesn't support namespaces, you CANNOT install the
-plugin and have a separate iSCSID running on the same node.
+plugin and have a separate iSCSID running on the same node (unless using the
+with-host-iscsid yaml, see "Host Based Iscsid" below)
 
 First ensure that each node in your kubernetes cluster is not running iSCSID
 by running the following
@@ -181,3 +182,47 @@ $ kubectl create -f csi-datera-secrets-latest.yaml
 
 The only difference between the "secrets" yaml and the regular yaml is the
 use of secrets for the "username" and "password" fields.
+
+## Host Based Iscsid
+You can use the iscsid on the host instead of a containerized version via the
+following steps:
+
+(NOTE: These MUST be performed before installing the CSI plugin)
+
+First install iscsid on the kubernetes hosts
+
+Ubuntu
+```bash
+$ apt install open-iscsi
+```
+
+Centos
+```bash
+$ yum install iscsi-initiator-utils
+```
+
+Verify iscsid is running:
+```bash
+$ ps -ef | grep iscsid
+root     12494   996  0 09:41 pts/2    00:00:00 grep --color=auto iscsid
+root     13326     1  0 Dec17 ?        00:00:01 /sbin/iscsid
+root     13327     1  0 Dec17 ?        00:00:05 /sbin/iscsid
+```
+
+Clone the datera-csi repository
+```bash
+$ git clone git@gits.daterainc.com:/datera-csi
+```
+
+Build the iscsi-recv binary
+```bash
+$ cd datera-csi
+$ env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o iscsi-recv github.com/Datera/datera-csi/cmd/iscsi-recv
+```
+
+Then run the iscsi-recv binary on each kubernetes host
+```bash
+$ ./iscsi-recv -addr unix:///tmp/csi-iscsi.sock
+```
+
+Now the CSI plugin is able to communicate with the host-based iscsid
