@@ -68,7 +68,8 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		}
 		vol.Formatted = true
 		(*md)["formatted"] = "true"
-		err = vol.Mount(req.StagingTargetPath, []string{})
+		mountArgs := strings.Split((*md)["m_args"], " ")
+		err = vol.Mount(req.StagingTargetPath, mountArgs)
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}
