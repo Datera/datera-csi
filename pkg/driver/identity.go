@@ -11,17 +11,21 @@ import (
 )
 
 func getManifestData() map[string]string {
+	//TODO(_alastor_): Populate manifest with Datera DSP information
 	manifest := map[string]string{}
 	return manifest
 }
 
 func (d *Driver) GetPluginInfo(ctxt context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	log.WithField("method", "get_plugin_info").Info("Identity server 'GetPluginInfo' called")
-	//TODO(_alastor_): Populate manifest with Datera DSP information
 	manifest := getManifestData()
+	vv, err := d.dc.VendorVersion()
+	if err != nil {
+		return nil, status.Errorf(codes.Unavailable, err.Error())
+	}
 	return &csi.GetPluginInfoResponse{
 		Name:          driverName,
-		VendorVersion: Version,
+		VendorVersion: vv,
 		Manifest:      manifest,
 	}, nil
 }

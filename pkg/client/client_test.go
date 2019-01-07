@@ -81,6 +81,15 @@ func getClient(t *testing.T) *DateraClient {
 	return client
 }
 
+func TestVendorVersion(t *testing.T) {
+	client := getClient(t)
+	if vv, err := client.VendorVersion(); err != nil {
+		t.Fatalf("Failed VendorVersion request: [%s]", err)
+	} else {
+		t.Logf("VendorVersion: [%s]", vv)
+	}
+}
+
 func TestVolumeCreate(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{
@@ -218,7 +227,7 @@ func TestLoginLogout(t *testing.T) {
 	cleani := createRegisterInitiator(t, client, vol)
 	defer cleani()
 	defer cleanv()
-	vol.Login(false)
+	vol.Login(false, false)
 	if vol.DevicePath == "" {
 		t.Fatal("Device Path not populated")
 	}
@@ -237,7 +246,7 @@ func TestMountUnmount(t *testing.T) {
 	cleani := createRegisterInitiator(t, client, vol)
 	defer cleani()
 	defer cleanv()
-	vol.Login(false)
+	vol.Login(false, false)
 	defer vol.Logout()
 
 	if err := vol.Format("xfs", []string{}); err != nil {
@@ -262,7 +271,7 @@ func TestBindMountUnBindMount(t *testing.T) {
 	cleani := createRegisterInitiator(t, client, vol)
 	defer cleani()
 	defer cleanv()
-	vol.Login(false)
+	vol.Login(false, false)
 	defer vol.Logout()
 
 	if err := vol.Format("ext4", []string{}); err != nil {

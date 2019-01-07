@@ -41,3 +41,21 @@ func (r DateraClient) GetCapacity() (*Capacity, error) {
 		HybridProvisioned: sys.HybridProvisionedCapacity,
 	}, nil
 }
+
+func (r DateraClient) VendorVersion() (string, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "VendorVersion")
+	co.Debugf(ctxt, "VendorVersion invoked")
+	sys, apierr, err := r.sdk.System.Get(&dsdk.SystemGetRequest{
+		Ctxt: r.ctxt,
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return "", err
+	}
+	if apierr != nil {
+		err = fmt.Errorf(dsdk.Pretty(apierr))
+		co.Error(ctxt, err)
+		return "", co.ErrTranslator(apierr)
+	}
+	return sys.BuildVersion, nil
+}
