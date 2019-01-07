@@ -10,15 +10,33 @@ import (
 	status "google.golang.org/grpc/status"
 )
 
-func getManifestData() map[string]string {
+func (d *Driver) getManifestData() (map[string]string, error) {
 	//TODO(_alastor_): Populate manifest with Datera DSP information
-	manifest := map[string]string{}
-	return manifest
+	mf, err := d.dc.GetManifest()
+	if err != nil {
+		return map[string]string{}, err
+	}
+	manifest := map[string]string{
+		"build_version":       mf.BuildVersion,
+		"callhome_enabled":    mf.CallhomeEnabled,
+		"compression_enabled": mf.CompressionEnabled,
+		"health":              mf.Health,
+		"l3_enabled":          mf.L3Enabled,
+		"name":                mf.Name,
+		"op_state":            mf.OpState,
+		"sw_version":          mf.SwVersion,
+		"timezone":            mf.Timezone,
+		"uuid":                mf.Uuid,
+	}
+	return manifest, nil
 }
 
 func (d *Driver) GetPluginInfo(ctxt context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	log.WithField("method", "get_plugin_info").Info("Identity server 'GetPluginInfo' called")
-	manifest := getManifestData()
+	manifest, err := d.getManifestData()
+	if err != nil {
+		return nil, status.Errorf(codes.Unavailable, err.Error())
+	}
 	vv, err := d.dc.VendorVersion()
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, err.Error())

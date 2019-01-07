@@ -99,6 +99,15 @@ func TestCapacity(t *testing.T) {
 	}
 }
 
+func TestManifest(t *testing.T) {
+	client := getClient(t)
+	if mf, err := client.GetManifest(); err != nil {
+		t.Fatalf("Failed GetManifest request: [%s]", err)
+	} else {
+		t.Logf("Manifest: [%#v]", mf)
+	}
+}
+
 func TestVolumeCreate(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{
