@@ -90,6 +90,15 @@ func TestVendorVersion(t *testing.T) {
 	}
 }
 
+func TestCapacity(t *testing.T) {
+	client := getClient(t)
+	if sys, err := client.GetCapacity(); err != nil {
+		t.Fatalf("Failed Capacity request: [%s]", err)
+	} else {
+		t.Logf("Capacity: [%#v]", sys)
+	}
+}
+
 func TestVolumeCreate(t *testing.T) {
 	client := getClient(t)
 	v := &VolOpts{
@@ -144,17 +153,6 @@ func TestListVolumes(t *testing.T) {
 	if len(vols) != 1 {
 		t.Fatalf("Did not return expected number of volumes: [%d] != [%d]", len(vols), lv-1)
 	}
-	// for _, name := range names {
-	// 	found := false
-	// 	for _, vol := range vols {
-	// 		if vol.Name == name {
-	// 			found = true
-	// 		}
-	// 	}
-	// 	if !found {
-	// 		t.Fatalf("Did not find AppInstance created by test: %s", name)
-	// 	}
-	// }
 }
 
 func TestVolumeMetadata(t *testing.T) {
