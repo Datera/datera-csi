@@ -9,5 +9,6 @@ require (
 	github.com/google/uuid v1.1.0
 	github.com/kubernetes-csi/csi-lib-iscsi v0.0.0-20181030162237-f05aea31e403
 	github.com/sirupsen/logrus v1.3.0
+	golang.org/x/net v0.0.0-20190108155000-395948e2f546
 	google.golang.org/grpc v1.17.0
 )

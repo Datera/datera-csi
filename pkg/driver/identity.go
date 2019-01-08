@@ -5,7 +5,6 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
-	log "github.com/sirupsen/logrus"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
@@ -31,8 +30,8 @@ func (d *Driver) getManifestData() (map[string]string, error) {
 	return manifest, nil
 }
 
-func (d *Driver) GetPluginInfo(ctxt context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
-	log.WithField("method", "get_plugin_info").Info("Identity server 'GetPluginInfo' called")
+func (d *Driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
+	d.InitFunc(ctx, "identity", "GetPluginInfo", *req)
 	manifest, err := d.getManifestData()
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, err.Error())
@@ -48,8 +47,8 @@ func (d *Driver) GetPluginInfo(ctxt context.Context, req *csi.GetPluginInfoReque
 	}, nil
 }
 
-func (d *Driver) GetPluginCapabilities(ctxt context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
-	log.WithField("method", "get_plugin_capabilities").Info("Identity server 'GetPluginCapabilities' called")
+func (d *Driver) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
+	d.InitFunc(ctx, "identity", "GetPluginCapabilities", *req)
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{
@@ -63,8 +62,8 @@ func (d *Driver) GetPluginCapabilities(ctxt context.Context, req *csi.GetPluginC
 	}, nil
 }
 
-func (d *Driver) Probe(ctxt context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
-	log.WithField("method", "probe").Info("Identity server 'Probe' called")
+func (d *Driver) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
+	d.InitFunc(ctx, "identity", "Probe", *req)
 	if err := d.dc.HealthCheck(); err != nil {
 		return nil, status.Errorf(codes.Unavailable, err.Error())
 	}

@@ -75,8 +75,8 @@ func (r DateraClient) VendorVersion() (string, error) {
 }
 
 func (r DateraClient) GetManifest() (*Manifest, error) {
-	ctxt := context.WithValue(r.ctxt, co.ReqName, "VendorVersion")
-	co.Debugf(ctxt, "VendorVersion invoked")
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetManifest")
+	co.Debugf(ctxt, "GetManifest invoked")
 	sys, apierr, err := r.sdk.System.Get(&dsdk.SystemGetRequest{
 		Ctxt: r.ctxt,
 	})
