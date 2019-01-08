@@ -195,7 +195,9 @@ func (d *Driver) Run() error {
 	}
 	co.Infof(ctxt, "Datera CSI Driver Serving On Socket: %s\n", addr)
 	go d.Heartbeater()
-	go d.LogPusher()
+	if d.env.LogPush {
+		go d.LogPusher()
+	}
 	return d.gs.Serve(listener)
 }
 
