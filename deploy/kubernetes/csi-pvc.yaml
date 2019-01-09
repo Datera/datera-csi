@@ -8,4 +8,4 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: datera-block-storage
+  storageClassName: dat-block-storage
