@@ -28,17 +28,17 @@ $ systemctl stop iscsid
 Then you can proceed with installation
 
 ```bash
-$ git clone http://github.com/Datera/kubernetes-driver
+$ git clone http://github.com/Datera/datera-csi
 ```
 
-Modify csi/csi-datera-latest.yaml and update the values for the following
-environment variables in the yaml:
+Modify deploy/kubernetes/with-cont-iscsid/csi-datera-latest.yaml and update the
+values for the following environment variables in the yaml:
 
-`DAT_MGMT`   -- The management IP of the Datera system
-`DAT_USER`   -- The username of your Datera account
-`DAT_PASS`   -- The password for your Datera account
-`DAT_TENANT` -- The tenant to use with your Datera account
-`DAT_API`    -- The API version to use when communicating (should be 2.2,
+* `DAT_MGMT`   -- The management IP of the Datera system
+* `DAT_USER`   -- The username of your Datera account
+* `DAT_PASS`   -- The password for your Datera account
+* `DAT_TENANT` -- The tenant to use with your Datera account
+* `DAT_API`    -- The API version to use when communicating (should be 2.2,
                 currently the only version the plugin supports)
 
 There are two locations for each value within the yaml that should be modified
@@ -211,10 +211,7 @@ root     13327     1  0 Dec17 ?        00:00:05 /sbin/iscsid
 
 Clone the datera-csi repository
 ```bash
-$ git clone git@gits.daterainc.com:/datera-csi
-# Fake the external import location
-$ git mkdir -p ~/go/src/github.com/Datera
-$ git mv datera-csi ~/go/src/github.com/Datera/
+$ git clone http://github.com/Datera/datera-csi
 ```
 
 Build the iscsi-recv binary
@@ -229,3 +226,8 @@ $ ./iscsi-recv -addr unix:///tmp/csi-iscsi.sock
 ```
 
 Now the CSI plugin is able to communicate with the host-based iscsid
+
+A different yaml file is now used for installing the plugin
+```bash
+kubectl create -f deploy/kubernetes/with-host-iscsid/csi-datera-latest.yaml
+```
