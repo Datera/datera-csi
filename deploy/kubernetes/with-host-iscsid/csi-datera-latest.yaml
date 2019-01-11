@@ -300,26 +300,30 @@ spec:
       containers:
         - name: node-driver-registrar
           imagePullPolicy: Always
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.1
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
           args:
             - "--v=5"
             - "--csi-address=$(DAT_SOCKET)"
             - "--kubelet-registration-path=$(REG_SOCKET)"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/dsp.csi.daterainc.io /registration/dsp.csi.daterainc.io-reg.sock"]
           env:
             - name: DAT_SOCKET
               #value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
               value: /csi/csi.sock
             - name: REG_SOCKET
-              value: /var/lib/kubelet/plugins_registry/dsp.csi.daterainc.io/csi.sock
+              value: /var/lib/kubelet/plugins/dsp.csi.daterainc.io/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
+              mountPath: /csi/
             - name: registration-dir
-              mountPath: /registration
+              mountPath: /registration/
         - name: dat-csi-plugin-node
           imagePullPolicy: Always
           securityContext:
@@ -355,28 +359,19 @@ spec:
           imagePullPolicy: "IfNotPresent"
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
-            - name: kubelet-plugins-k
-              mountPath: /var/lib/kubelet/plugins_registry/kubernetes.io
-              mountPropagation: Bidirectional
-            - name: kubelet-pod
-              mountPath: /var/lib/kubelet/pods
-              mountPropagation: Bidirectional
+              mountPath: /csi/
             - name: devices
               mountPath: /dev
             - name: iscsi-socket
               mountPath: /iscsi-socket/iscsi.sock
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
       volumes:
         - name: socket-dir
           hostPath:
-            path: /var/lib/kubelet/plugins_registry/dsp.csi.daterainc.io
+            path: /var/lib/kubelet/plugins/dsp.csi.daterainc.io/
             type: DirectoryOrCreate
-        - name: kubelet-plugins-k
-          hostPath:
-            path: /var/lib/kubelet/plugins_registry/kubernetes.io
-        - name: kubelet-pod
-          hostPath:
-            path: /var/lib/kubelet/pods
         - name: iscsi-socket
           hostPath:
             path: /tmp/csi-iscsi.sock
@@ -387,3 +382,8 @@ spec:
         - name: registration-dir
           hostPath:
             path: /var/lib/kubelet/plugins_registry/
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+
