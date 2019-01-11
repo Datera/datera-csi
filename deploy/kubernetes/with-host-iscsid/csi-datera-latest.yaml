@@ -70,7 +70,7 @@ metadata:
   namespace: kube-system
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-provisioner: dsp.csi.datera.io
+provisioner: dsp.csi.daterainc.io
 parameters:
   replica_count: "3"
 
@@ -173,7 +173,7 @@ spec:
           imagePullPolicy: Always
           image: quay.io/k8scsi/csi-provisioner:v1.0.1
           args:
-            - "--provisioner=dsp.csi.datera.io"
+            - "--provisioner=dsp.csi.daterainc.io"
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
           env:
