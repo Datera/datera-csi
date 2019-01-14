@@ -27,7 +27,7 @@ func (v *Volume) Format(fsType string, fsArgs []string, timeout int) error {
 }
 
 func format(ctxt context.Context, device, fsType string, fsArgs []string, timeout int) error {
-	cmd := append([]string{fmt.Sprintf("mkfs.%s", fsType), device}, fsArgs...)
+	cmd := append(append([]string{fmt.Sprintf("mkfs.%s", fsType)}, fsArgs...), device)
 	for {
 		if _, err := co.RunCmd(ctxt, cmd...); err != nil {
 			co.Info(ctxt, err)
