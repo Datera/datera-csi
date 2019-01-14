@@ -62,7 +62,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if fs := (*md)["fs_type"]; fs != "" {
 		// Mount Device
 		fsType, fsArgs := fs, strings.Split((*md)["fs_args"], " ")
-		err = vol.Format(fsType, fsArgs)
+		err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
 		if err != nil {
 			return nil, status.Errorf(codes.Unknown, err.Error())
 		}

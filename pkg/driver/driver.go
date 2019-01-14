@@ -33,6 +33,7 @@ const (
 	EnvMetadataDebug    = "DAT_METADATA_DEBUG"
 	EnvDisableLogPush   = "DAT_DISABLE_LOGPUSH"
 	EnvLogPushInterval  = "DAT_LOGPUSH_INTERVAL"
+	EnvFormatTimeout    = "DAT_FORMAT_TIMEOUT"
 
 	IdentityType = iota + 1
 	ControllerType
@@ -66,6 +67,7 @@ type EnvVars struct {
 	MetadataDebug    bool
 	LogPush          bool
 	LogPushInterval  int
+	FormatTimeout    int
 }
 
 func readEnvVars() *EnvVars {
@@ -102,6 +104,10 @@ func readEnvVars() *EnvVars {
 		// Default is to run logpusher every 2 hours
 		lpi = int64((time.Hour * 2) / time.Second)
 	}
+	ft, err := strconv.ParseInt(os.Getenv(EnvFormatTimeout), 0, 0)
+	if err != nil {
+		ft = int64(60)
+	}
 	return &EnvVars{
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
@@ -112,6 +118,7 @@ func readEnvVars() *EnvVars {
 		MetadataDebug:    mdd,
 		LogPush:          lp,
 		LogPushInterval:  int(lpi),
+		FormatTimeout:    int(ft),
 	}
 }
 

@@ -11,14 +11,14 @@ import (
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
 
-func (v *Volume) Format(fsType string, fsArgs []string) error {
+func (v *Volume) Format(fsType string, fsArgs []string, timeout int) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Format")
 	co.Debugf(ctxt, "Format invoked for %s", v.Name)
 	if v.Formatted {
 		co.Warningf(ctxt, "Volume %s already formatted: %s, %s", v.Name, v.FsType, v.FsArgs)
 		return nil
 	}
-	if err := format(ctxt, v.DevicePath, fsType, fsArgs); err != nil {
+	if err := format(ctxt, v.DevicePath, fsType, fsArgs, timeout); err != nil {
 		return err
 	}
 	v.FsType = fsType
@@ -26,9 +26,8 @@ func (v *Volume) Format(fsType string, fsArgs []string) error {
 	return nil
 }
 
-func format(ctxt context.Context, device, fsType string, fsArgs []string) error {
+func format(ctxt context.Context, device, fsType string, fsArgs []string, timeout int) error {
 	cmd := append([]string{fmt.Sprintf("mkfs.%s", fsType), device}, fsArgs...)
-	timeout := 10
 	for {
 		if _, err := co.RunCmd(ctxt, cmd...); err != nil {
 			co.Info(ctxt, err)
