@@ -389,7 +389,7 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 				},
 				{
 					AccessType: &csi.VolumeCapability_Block{
-						Mount: &csi.VolumeCapability_BlockVolume{},
+						Block: &csi.VolumeCapability_BlockVolume{},
 					},
 					AccessMode: &csi.VolumeCapability_AccessMode{
 						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
@@ -397,7 +397,7 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 				},
 				{
 					AccessType: &csi.VolumeCapability_Block{
-						Mount: &csi.VolumeCapability_BlockVolume{},
+						Block: &csi.VolumeCapability_BlockVolume{},
 					},
 					AccessMode: &csi.VolumeCapability_AccessMode{
 						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
@@ -405,7 +405,7 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 				},
 				{
 					AccessType: &csi.VolumeCapability_Block{
-						Mount: &csi.VolumeCapability_BlockVolume{},
+						Block: &csi.VolumeCapability_BlockVolume{},
 					},
 					AccessMode: &csi.VolumeCapability_AccessMode{
 						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
