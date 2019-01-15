@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
@@ -58,22 +59,31 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	(*md)["device_path"] = vol.DevicePath
-	// TODO: Add support for Block capability when CSI officially suports it
-	if fs := (*md)["fs_type"]; fs != "" {
-		// Mount Device
-		fsType, fsArgs := fs, strings.Split((*md)["fs_args"], " ")
-		err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, err.Error())
+	switch vc.GetAccessType().(type) {
+
+	case *csi.VolumeCapability_Mount:
+		co.Infof(ctxt, "Handling NodeStageVolume VolumeCapability_Mount")
+		if fs := (*md)["fs_type"]; fs != "" {
+			// Mount Device
+			fsType, fsArgs := fs, strings.Split((*md)["fs_args"], " ")
+			err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
+			if err != nil {
+				return nil, status.Errorf(codes.Unknown, err.Error())
+			}
+			vol.Formatted = true
+			(*md)["formatted"] = "true"
+			mountArgs := strings.Split((*md)["m_args"], " ")
+			err = vol.Mount(req.StagingTargetPath, mountArgs)
+			if err != nil {
+				return nil, status.Errorf(codes.Unknown, err.Error())
+			}
+			(*md)["mount_path"] = vol.MountPath
 		}
-		vol.Formatted = true
-		(*md)["formatted"] = "true"
-		mountArgs := strings.Split((*md)["m_args"], " ")
-		err = vol.Mount(req.StagingTargetPath, mountArgs)
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, err.Error())
-		}
-		(*md)["mount_path"] = vol.MountPath
+	case *csi.VolumeCapability_Block:
+		// No formatting is needed since this is raw block
+		co.Infof(ctxt, "Handling NodeStageVolume VolumeCapability_Block")
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Unknown volume capability: %#v", vc))
 	}
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
@@ -97,6 +107,7 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	// Don't return an error for failures to unmount or logout (fail gracefully)
 	// We log the errors so if something did go wrong we can track it down without bringing
 	// everything to a halt
+
 	err = vol.Unmount()
 	if err != nil {
 		co.Warning(ctxt, err)
