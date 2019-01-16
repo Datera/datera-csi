@@ -1,14 +1,15 @@
-#!/bin/bash -x
+#!/bin/bash
 
 IFILE="https://github.com/Datera/datera-csi/releases/download/v1.0.3/iscsi-recv.linux.x86-64"
 SFILE="/tmp/iscsi-recv"
 SCSI_SHA1="809e0816f6a294c68c07a71f7c7206f4ac165d9b"
+SOCK="/tmp/csi-iscsi.sock"
 
 SCSI_SERVICE="[Unit]
 Description = iscsi-recv container to host iscsiadm adapter service
 
 [Service]
-ExecStart = /tmp/iscsi-recv -addr unix:///tmp/csi-iscsi.sock
+ExecStart = /tmp/iscsi-recv -addr unix:///${SOCK}
 
 [Install]
 WantedBy = multi-user.target"
@@ -84,5 +85,45 @@ function get_and_start_iscsi_recv()
     fi
 }
 
-check_external_dependencies
-get_and_start_iscsi_recv
+function uninstall()
+{
+    echo "[INFO] Stopping service"
+    systemctl stop "${SCSI_SERVICE_NAME}"
+    echo "[INFO] Disabling service"
+    systemctl disable "${SCSI_SERVICE_NAME}"
+    echo "[INFO] Removing service file"
+    rm -- "${SCSI_SERVICE_FILE}"
+    echo "[INFO] Reloading/Resetting systemctl"
+    systemctl daemon-reload
+    systemctl reset-failed
+    echo "[INFO] Removing binary"
+    rm -- "${SFILE}" "${SOCK}"
+}
+
+function usage()
+{
+    echo "Usage: $0 [-hu]
+-h  Print Usage
+-u  Uninstall iscsi-recv" 1>&2; exit 1;
+}
+
+while getopts ":uh" option
+do
+    case "${option}"
+    in
+        u) OPT_U=true
+          ;;
+        \?) echo "Invalid Option: -${OPTARG}" >&2; exit 1
+          ;;
+        *) usage
+          ;;
+    esac
+done
+
+if [[ ${OPT_U} == true ]]
+then
+    uninstall
+else
+    check_external_dependencies
+    get_and_start_iscsi_recv
+fi
