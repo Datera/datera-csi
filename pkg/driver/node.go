@@ -82,6 +82,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	case *csi.VolumeCapability_Block:
 		// No formatting is needed since this is raw block
 		co.Infof(ctxt, "Handling NodeStageVolume VolumeCapability_Block")
+		(*md)["mount_path"] = vol.DevicePath
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Unknown volume capability: %#v", vc))
 	}
