@@ -139,7 +139,7 @@ func devLink(ctxt context.Context, device, dest string) error {
 }
 
 func findFs(ctxt context.Context, device string) (string, error) {
-	cmd := []string{"blkid", device, "|", "grep", "-Eo", "'(TYPE=\".*\")'"}
+	cmd := []string{"blkid", device}
 	out, err := co.RunCmd(ctxt, cmd...)
 	if err != nil {
 		return "", err
