@@ -8,8 +8,8 @@ function genstr()
 }
 
 SAVE_STR=$(genstr)
-SAVE_DIR=/tmp/csi-logs-$SAVE_STR
-ARCHIVE=/tmp/csi-logs-$SAVE_STR.tar.gz
+SAVE_DIR=/tmp/csi-logs-${SAVE_STR}
+ARCHIVE=/tmp/csi-logs-${SAVE_STR}.tar.gz
 
 function check_external_dependencies()
 {
