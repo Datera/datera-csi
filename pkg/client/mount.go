@@ -184,11 +184,13 @@ func unmount(ctxt context.Context, path string) error {
 		cmd := []string{"umount", path}
 		_, err := co.RunCmd(ctxt, cmd...)
 		if err != nil {
+			os.RemoveAll(path)
 			return err
 		}
 	}
 	if err != nil {
+		os.RemoveAll(path)
 		return err
 	}
-	return os.Remove(path)
+	return os.RemoveAll(path)
 }
