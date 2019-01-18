@@ -166,12 +166,13 @@ func mount(ctxt context.Context, device, dest string, options []string) error {
 	if f, err := os.Stat(dest); err != nil && !f.IsDir() && strings.HasPrefix(device, "/dev/") {
 		return devLink(ctxt, device, dest)
 	} else {
-		fs, err := findFs(ctxt, device)
-		if err != nil {
-			return err
-		}
+		// fs, err := findFs(ctxt, device)
+		// if err != nil {
+		// 	return err
+		// }
+
 		// Mount to directory
-		cmd := append([]string{"mount", "-t", fs, device, dest}, options...)
+		cmd := append([]string{"mount", device, dest}, options...)
 		_, err = co.RunCmd(ctxt, cmd...)
 		return err
 	}
