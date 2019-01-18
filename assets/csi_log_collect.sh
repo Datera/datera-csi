@@ -1,6 +1,7 @@
 #!/bin/bash
 
 KUBECTL="kubectl"
+POD_REGEX="csi-(provisioner|node)-"
 
 function genstr()
 {
@@ -53,7 +54,7 @@ function collect_logs()
     mkdir -p ${SAVE_DIR}
     cat /etc/*-release > ${SAVE_DIR}/os_release.txt
     ${KUBECTL} version > ${SAVE_DIR}/kubectl_version.txt
-    local pods=$(${KUBECTL} get pods --namespace kube-system | grep -E "csi-(provisioner|node)-" | awk '{print $1}')
+    local pods=$(${KUBECTL} get pods --namespace kube-system | grep -E "${POD_REGEX}" | awk '{print $1}')
     for pod in ${pods}
     do
         echo "[INFO] Collecting for pod: ${pod}"
@@ -70,17 +71,20 @@ Usage: $0 [-k KUBECTL -hs]
 -h Print Help
 -s Skip dependency check
 -k KUBECTL Use non-standard kubectl
+-p POD_REGEX Regex (grep -E compatible) to match pods for log collection
 "; exit 1;
 }
 
 OPT_S=false
-while getopts ":hsk:" option
+while getopts ":hsk:p:" option
 do
     case "${option}"
     in
         s) OPT_S=true
           ;;
         k) KUBECTL=${OPTARG}
+          ;;
+        p) POD_REGEX=${OPTARG}
           ;;
         \?) echo "Invalid Option: -${OPTARG}" >&2; exit 1
           ;;
