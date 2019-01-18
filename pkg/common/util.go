@@ -108,13 +108,15 @@ func ErrTranslator(apierr *dsdk.ApiErrorResponse) error {
 	return status.Errorf(codes.Unknown, "%s: %s", apierr.Name, apierr.Message)
 }
 
-func FindCaptureGroup(r *regexp.Regexp, matchString string, group string) string {
+func GetCaptureGroups(r *regexp.Regexp, matchString string) map[string]string {
 	match := r.FindStringSubmatch(matchString)
 	result := make(map[string]string)
-	for i, name := range r.SubexpNames() {
-		if i != 0 && name != "" {
-			result[name] = match[i]
+	if len(match) != 0 {
+		for i, name := range r.SubexpNames() {
+			if i != 0 && name != "" {
+				result[name] = match[i]
+			}
 		}
 	}
-	return result[group]
+	return result
 }

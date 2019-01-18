@@ -144,7 +144,13 @@ func findFs(ctxt context.Context, device string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return co.FindCaptureGroup(fsTypeDetect, out, "fs"), nil
+	co.Debugf(ctxt, "Blkid result: %s", out)
+	groups := co.GetCaptureGroups(fsTypeDetect, out)
+	if k, ok := groups["fs"]; !ok {
+		return "", fmt.Errorf("Couldn't find capture group")
+	} else {
+		return k, nil
+	}
 }
 
 func mount(ctxt context.Context, device, dest string, options []string) error {
@@ -166,13 +172,17 @@ func mount(ctxt context.Context, device, dest string, options []string) error {
 	if f, err := os.Stat(dest); err != nil && !f.IsDir() && strings.HasPrefix(device, "/dev/") {
 		return devLink(ctxt, device, dest)
 	} else {
-		// fs, err := findFs(ctxt, device)
-		// if err != nil {
-		// 	return err
-		// }
-
+		fs, err := findFs(ctxt, device)
+		if fs == "" {
+			co.Warning(ctxt, "Couldn't detect filesystem from blkid output")
+			// Mount to directory
+			cmd := append([]string{"mount", device, dest}, options...)
+			_, err = co.RunCmd(ctxt, cmd...)
+			return err
+		}
+		co.Debugf(ctxt, "Detected %s filesystem", fs)
 		// Mount to directory
-		cmd := append([]string{"mount", device, dest}, options...)
+		cmd := append([]string{"mount", "-t", fs, device, dest}, options...)
 		_, err = co.RunCmd(ctxt, cmd...)
 		return err
 	}
