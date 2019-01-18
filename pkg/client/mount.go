@@ -4,11 +4,18 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
+	unix "golang.org/x/sys/unix"
+)
+
+var (
+	fsTypeDetect = regexp.MustCompile(`TYPE="(?P<fs>.*?)"`)
 )
 
 func (v *Volume) Format(fsType string, fsArgs []string, timeout int) error {
@@ -108,6 +115,38 @@ func (v *Volume) Unmount() error {
 	return nil
 }
 
+func getMajorMinor(device string) (uint32, uint32, error) {
+	s := unix.Stat_t{}
+	if err := unix.Stat(device, &s); err != nil {
+		return 0, 0, err
+	}
+
+	dev := uint64(s.Rdev)
+	return unix.Major(dev), unix.Minor(dev), nil
+}
+
+func devLink(ctxt context.Context, device, dest string) error {
+	major, minor, err := getMajorMinor(device)
+	if err != nil {
+		return err
+	}
+	cmd := []string{"mknod", dest, "b", strconv.FormatUint(uint64(major), 10), strconv.FormatUint(uint64(minor), 10)}
+	_, err = co.RunCmd(ctxt, cmd...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func findFs(ctxt context.Context, device string) (string, error) {
+	cmd := []string{"blkid", device}
+	out, err := co.RunCmd(ctxt, cmd...)
+	if err != nil {
+		return "", err
+	}
+	return co.FindCaptureGroup(fsTypeDetect, out, "fs"), nil
+}
+
 func mount(ctxt context.Context, device, dest string, options []string) error {
 	// Check/create directory
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
@@ -124,15 +163,29 @@ func mount(ctxt context.Context, device, dest string, options []string) error {
 		}
 		device = out
 	}
-	// Mount to directory
-	cmd := append([]string{"mount", device, dest}, options...)
-	_, err := co.RunCmd(ctxt, cmd...)
-	return err
+	if f, err := os.Stat(dest); err != nil && !f.IsDir() && strings.HasPrefix(device, "/dev/") {
+		return devLink(ctxt, device, dest)
+	} else {
+		fs, err := findFs(ctxt, device)
+		if err != nil {
+			return err
+		}
+		// Mount to directory
+		cmd := append([]string{"mount", "-t", fs, device, dest}, options...)
+		_, err = co.RunCmd(ctxt, cmd...)
+		return err
+	}
 }
 
 func unmount(ctxt context.Context, path string) error {
-	cmd := []string{"umount", path}
-	_, err := co.RunCmd(ctxt, cmd...)
+	var err error
+	if f, err := os.Stat(path); err != nil && f.IsDir() {
+		cmd := []string{"umount", path}
+		_, err := co.RunCmd(ctxt, cmd...)
+		if err != nil {
+			return err
+		}
+	}
 	if err != nil {
 		return err
 	}

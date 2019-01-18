@@ -10,5 +10,6 @@ require (
 	github.com/kubernetes-csi/csi-lib-iscsi v0.0.0-20181030162237-f05aea31e403
 	github.com/sirupsen/logrus v1.3.0
 	golang.org/x/net v0.0.0-20190108155000-395948e2f546
+	golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33
 	google.golang.org/grpc v1.17.0
 )

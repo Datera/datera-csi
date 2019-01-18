@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	uuid "github.com/google/uuid"
@@ -105,4 +106,15 @@ func ErrTranslator(apierr *dsdk.ApiErrorResponse) error {
 		return status.Errorf(codes.NotFound, "%s: %s", apierr.Name, apierr.Message)
 	}
 	return status.Errorf(codes.Unknown, "%s: %s", apierr.Name, apierr.Message)
+}
+
+func FindCaptureGroup(r *regexp.Regexp, matchString string, group string) string {
+	match := r.FindStringSubmatch(matchString)
+	result := make(map[string]string)
+	for i, name := range r.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = match[i]
+		}
+	}
+	return result[group]
 }
