@@ -61,13 +61,23 @@ function collect_logs()
         collect_pod_logs ${pod}
     done
     echo "[INFO] Creating archive: ${ARCHIVE}"
-    tar cvfz ${ARCHIVE} ${SAVE_DIR}
+    tar cvfz ${ARCHIVE} ${SAVE_DIR} > /dev/null 2>&1
+    if [[ $? != 0 ]]
+    then
+        echo "[ERROR] Failed to create archive"
+        exit 1
+    fi
 }
 
 function usage()
 {
     echo "
-Usage: $0 [-k KUBECTL -hs]
+Datera CSI pod log collect script.
+
+This script will iterate through all relevant CSI pods and download their logs
+into a tarball archive located in /tmp/
+
+Usage: $0 [-k KUBECTL -p POD_REGEX -hs]
 -h Print Help
 -s Skip dependency check
 -k KUBECTL Use non-standard kubectl
