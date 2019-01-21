@@ -2,6 +2,7 @@
 
 KUBECTL="kubectl"
 POD_REGEX="csi-(provisioner|node)-"
+RSYNC="rsync://rts7.daterainc.com:/dumps/"
 
 function genstr()
 {
@@ -15,7 +16,7 @@ ARCHIVE=/tmp/csi-logs-${SAVE_STR}.tar.gz
 function check_external_dependencies()
 {
     #Make sure these executables exist in PATH
-    local execs="${KUBECTL} grep awk tar"
+    local execs="${KUBECTL} grep awk tar rsync"
     echo "[INFO] Dependency checking"
 
     for bx in ${execs}
@@ -69,6 +70,17 @@ function collect_logs()
     fi
 }
 
+function upload_logs()
+{
+    echo "[INFO] Uploading logs to rts7.daterainc.com/dumps/$(basename ${ARCHIVE})"
+    rsync -a ${ARCHIVE} ${RSYNC}
+    if [[ $? != 0 ]]
+    then
+        echo "[ERROR] Failed to upload archive"
+        exit 1
+    fi
+}
+
 function usage()
 {
     echo "
@@ -80,17 +92,20 @@ into a tarball archive located in /tmp/
 Usage: $0 [-k KUBECTL -p POD_REGEX -hs]
 -h Print Help
 -s Skip dependency check
+-u Upload logs to /dumps
 -k KUBECTL Use non-standard kubectl
 -p POD_REGEX Regex (grep -E compatible) to match pods for log collection
 "; exit 1;
 }
 
 OPT_S=false
-while getopts ":hsk:p:" option
+while getopts ":hsuk:p:" option
 do
     case "${option}"
     in
         s) OPT_S=true
+          ;;
+        u) OPT_U=true
           ;;
         k) KUBECTL=${OPTARG}
           ;;
@@ -109,3 +124,8 @@ then
 fi
 
 collect_logs
+
+if [[ ${OPT_U} == true ]]
+then
+    upload_logs
+fi
