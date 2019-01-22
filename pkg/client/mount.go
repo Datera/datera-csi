@@ -56,9 +56,10 @@ func (v *Volume) Mount(dest string, options []string) error {
 	co.Debugf(ctxt, "Mount invoked for %s", v.Name)
 	if v.DevicePath == "" {
 		return fmt.Errorf("No device path found for volume %s.  Is the volume logged in?", v.Name)
-	} else if v.MountPath != "" {
-		return fmt.Errorf("Mount path already exists for volume %s", v.Name)
 	}
+	// } else if v.MountPath != "" {
+	// 	return fmt.Errorf("Mount path already exists for volume %s", v.Name)
+	// }
 	if err := mount(ctxt, v.DevicePath, dest, options); err != nil {
 		co.Error(ctxt, err)
 		return err
