@@ -41,7 +41,7 @@ function collect_pod_logs()
 {
     local pod=$1
     local containers=$(${KUBECTL} logs --namespace kube-system ${pod} 2>&1 | grep -Po "\[\K.*(?=\])")
-    ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}_describe.txt
+    ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}/describe.txt
     mkdir -p ${SAVE_DIR}/${pod}/
     for c in ${containers}
     do
