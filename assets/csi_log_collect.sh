@@ -10,8 +10,8 @@ function genstr()
 }
 
 SAVE_STR=$(genstr)
-SAVE_DIR=/tmp/csi-logs-${SAVE_STR}
-ARCHIVE=/tmp/csi-logs-${SAVE_STR}.tar.gz
+SAVE_DIR=/tmp/csi-logs-$(hostname)-${SAVE_STR}
+ARCHIVE=/tmp/csi-logs-$(hostname)-${SAVE_STR}.tar.gz
 
 function check_external_dependencies()
 {
@@ -41,8 +41,8 @@ function collect_pod_logs()
 {
     local pod=$1
     local containers=$(${KUBECTL} logs --namespace kube-system ${pod} 2>&1 | grep -Po "\[\K.*(?=\])")
-    ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}/describe.txt
     mkdir -p ${SAVE_DIR}/${pod}/
+    ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}/describe.txt
     for c in ${containers}
     do
         echo "[INFO] Saving container logfile: ${c}"
