@@ -42,10 +42,11 @@ function collect_pod_logs()
     local pod=$1
     local containers=$(${KUBECTL} logs --namespace kube-system ${pod} 2>&1 | grep -Po "\[\K.*(?=\])")
     ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}_describe.txt
+    mkdir -p ${SAVE_DIR}/${pod}/
     for c in ${containers}
     do
         echo "[INFO] Saving container logfile: ${c}"
-        ${KUBECTL} logs --namespace kube-system ${pod} ${c} > ${SAVE_DIR}/${c}.txt
+        ${KUBECTL} logs --namespace kube-system ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}.txt
     done
 }
 
@@ -62,7 +63,7 @@ function collect_logs()
         collect_pod_logs ${pod}
     done
     echo "[INFO] Creating archive: ${ARCHIVE}"
-    tar cvfz ${ARCHIVE} ${SAVE_DIR} > /dev/null 2>&1
+    tar cvfz ${ARCHIVE} -C ${SAVE_DIR} . > /dev/null 2>&1
     if [[ $? != 0 ]]
     then
         echo "[ERROR] Failed to create archive"
