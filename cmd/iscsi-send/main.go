@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -63,7 +64,9 @@ func main() {
 	defer cancel()
 	setupInitName(ctx, c)
 	r, err := c.SendArgs(ctx, &pb.SendArgsRequest{Args: *args})
-	if err != nil {
+	// iscsadm exit-status 21 is No Objects Found, which just means the system
+	// is clear of other logins
+	if err != nil && !strings.Contains(err.Error(), "exit status 21") {
 		co.Fatalf(ctx, "Could not send args: %v", err)
 	}
 	co.Debugf(ctx, "Iscsiadm Result: %s", r.Result)
