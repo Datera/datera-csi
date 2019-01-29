@@ -155,7 +155,7 @@ func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool
 		Name:           ai.Name,
 		AdminState:     ai.AdminState,
 		RepairPriority: ai.RepairPriority,
-		Template:       ai.AppTemplate.Name,
+		Template:       ai.AppTemplate.Path,
 
 		TargetOpState: si.OpState,
 		Ips:           si.Access.Ips,
@@ -195,6 +195,8 @@ func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool
 		vol.FsArgs = fsArgs
 		vol.Formatted = fm
 	}
+
+	co.Debugf(ctxt, "Instantiated Client Volume: %#v", vol)
 	return vol, nil
 }
 
@@ -229,7 +231,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 		// From Template
 		template := strings.Trim(volOpts.Template, "/")
 		co.Debugf(ctxt, "Creating AppInstance with template: %s", template)
-		at := &dsdk.AppTemplate{
+		at := &dsdk.AppInstanceAppTemplate{
 			Path: "/app_templates/" + template,
 		}
 		ai = dsdk.AppInstancesCreateRequest{
