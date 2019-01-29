@@ -54,10 +54,6 @@ $ systemctl --all | grep iscsi-recv
 iscsi-recv.service       loaded    active     running   iscsi-recv container to host iscsiadm adapter service
 ```
 
-```bash
-$ git clone http://github.com/Datera/datera-csi
-```
-
 Modify deploy/kubernetes/with-host-iscsid/csi-datera-latest.yaml and update the
 values for the following environment variables in the yaml:
 
@@ -115,6 +111,8 @@ Name                   |     Default
 ``fs_args``            |     ``-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F``
 ``delete_on_unmount``  |     ``false``
 
+NOTE: All parameters MUST be strings in the yaml file otherwise the kubectl
+parser will fail.  If in doubt, enclose each in double quotes ("")
 
 ```bash
 $ kubectl create -f csi/csi-datera-latest.yaml
