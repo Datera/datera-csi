@@ -47,12 +47,17 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	}
 
 	// Setup IpPool
-	if ipp, err := d.dc.GetIpPoolFromName((*md)["ip_pool"]); err != nil {
-		return nil, status.Errorf(codes.NotFound, err.Error())
-	} else {
-		if err = vol.RegisterIpPool(ipp); err != nil {
-			return nil, status.Errorf(codes.Unknown, err.Error())
+	if vol.Template == "" {
+		co.Debugf(ctxt, "Registering IP Pool: %s", (*md)["ip_pool"])
+		if ipp, err := d.dc.GetIpPoolFromName((*md)["ip_pool"]); err != nil {
+			return nil, status.Errorf(codes.NotFound, err.Error())
+		} else {
+			if err = vol.RegisterIpPool(ipp); err != nil {
+				return nil, status.Errorf(codes.Unknown, err.Error())
+			}
 		}
+	} else {
+		co.Debug(ctxt, "Skipping IP Pool registration due to Template")
 	}
 	// Login to target
 	if err = vol.Login(!d.env.DisableMultipath, (*md)["round_robin"] == "true"); err != nil {
