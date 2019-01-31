@@ -88,7 +88,7 @@ function collect_remote_logs() {
     do
         echo "[INFO] Collecting logs from ${ip}"
         mkdir -p ${SAVE_DIR}/${ip}
-        sshpass -p "${PASSWORD}" scp ${USERNAME}@${ip}:/var/log/messages ${SAVE_DIR}/${ip}/messages
+        sshpass -p "${PASSWORD}" scp -o "StrictHostKeyChecking=no" "${USERNAME}@${ip}:/var/log/messages*" ${SAVE_DIR}/${ip}/
         sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} dmesg > ${SAVE_DIR}/${ip}/dmesg
     done
 }
