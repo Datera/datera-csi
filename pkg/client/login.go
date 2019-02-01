@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"time"
