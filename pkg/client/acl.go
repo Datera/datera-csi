@@ -91,9 +91,6 @@ func (r *Initiator) Delete(quiet bool) error {
 func (r *Volume) RegisterAcl(cinit *Initiator) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "RegisterAcl")
 	co.Debugf(ctxt, "RegisterAcl invoked for %s with initiator %s", r.Name, cinit.Name)
-	myInit := &dsdk.Initiator{
-		Path: cinit.Path,
-	}
 	// Update existing AclPolicy if it exists
 	si := r.Ai.StorageInstances[0]
 	acl, apierr, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{Ctxt: ctxt})
@@ -104,7 +101,47 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return co.ErrTranslator(apierr)
 	}
-	acl.Initiators = append(acl.Initiators, myInit)
+	acl.Initiators = append(acl.Initiators, &dsdk.Initiator{
+		Path: cinit.Path,
+	})
+	if _, apierr, err = acl.Set(&dsdk.AclPolicySetRequest{
+		Ctxt:       ctxt,
+		Initiators: acl.Initiators,
+	}); err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return co.ErrTranslator(apierr)
+	}
+	return nil
+}
+
+func (r *Volume) UnregisterAcl(cinit *Initiator) error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "UnregisterAcl")
+	co.Debugf(ctxt, "UnregisterAcl invoked for %s with initiator %s", r.Name, cinit.Name)
+	// Update existing AclPolicy if it exists
+	si := r.Ai.StorageInstances[0]
+	acl, apierr, err := si.AclPolicy.Get(&dsdk.AclPolicyGetRequest{Ctxt: ctxt})
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return co.ErrTranslator(apierr)
+	}
+
+	// Remove the matching initiator from the initiators list
+	newInits := []*dsdk.Initiator{}
+	for _, init := range acl.Initiators {
+		if init.Path != cinit.Path {
+			newInits = append(newInits, &dsdk.Initiator{
+				Path: cinit.Path,
+			})
+		}
+	}
+	acl.Initiators = newInits
+
 	if _, apierr, err = acl.Set(&dsdk.AclPolicySetRequest{
 		Ctxt:       ctxt,
 		Initiators: acl.Initiators,

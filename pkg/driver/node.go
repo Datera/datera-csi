@@ -133,6 +133,14 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 	if err != nil {
 		co.Warning(ctxt, err)
 	}
+	init, err := d.dc.CreateGetInitiator()
+	if err != nil {
+		co.Warning(ctxt, err)
+	}
+	err = vol.UnregisterAcl(init)
+	if err != nil {
+		co.Warning(ctxt, err)
+	}
 	if (*md)["delete_on_unmount"] == "true" {
 		co.Infof(ctxt, "Auto-deleting %s on unmount", vol.Name)
 		if err = vol.Delete(false); err != nil {
