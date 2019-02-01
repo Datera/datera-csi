@@ -239,6 +239,23 @@ func (r *Volume) DeleteSnapshot(id string) error {
 	return nil
 }
 
+func (r *Volume) HasSnapshots() (bool, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "HasSnapshots")
+	co.Debugf(ctxt, "Volume %s HasSnapshots invoked\n", r.Name)
+	v := r.Ai.StorageInstances[0].Volumes[0]
+	rsnaps, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
+		Ctxt: ctxt,
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return false, err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return false, co.ErrTranslator(apierr)
+	}
+	return len(rsnaps) > 0, nil
+}
+
 func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debugf(ctxt, "Volume %s ListSnapshots invoked\n", r.Name)

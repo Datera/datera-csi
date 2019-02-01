@@ -325,6 +325,17 @@ func (r DateraClient) DeleteVolume(name string, force bool) error {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return co.ErrTranslator(apierr)
 	}
+	// Kube doesn't perform this check for us, so we need to stop any deletion
+	// of a volume currently possessing snapshots to avoid unintentional data loss.
+	snaps, err := v.HasSnapshots()
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if snaps {
+		err = fmt.Errorf("Volume %s cannot be deleted because it has snapshots", v.Name)
+		co.Error(ctxt, err)
+		return err
+	}
 	return v.Delete(force)
 }
 

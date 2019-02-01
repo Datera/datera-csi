@@ -316,7 +316,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 	// Handle req.ControllerDeleteSecrets
 	// TODO: Figure out what we want to do with secrets (software encryption maybe?)
 	// sec := req.ControllerDeleteSecrets
-	if err := d.dc.DeleteVolume(req.VolumeId, true); err != nil {
+	if err := d.dc.DeleteVolume(req.VolumeId, false); err != nil {
 		co.Errorf(ctxt, "Error deleting volume: %s.  err: %s", vid, err)
 	}
 	return &csi.DeleteVolumeResponse{}, nil
