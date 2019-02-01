@@ -95,6 +95,7 @@ function collect_remote_logs() {
         mkdir -p ${SAVE_DIR}/${ip}
         sshpass -p "${PASSWORD}" scp -o "StrictHostKeyChecking=no" "${USERNAME}@${ip}:/var/log/messages*" ${SAVE_DIR}/${ip}/
         sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} dmesg > ${SAVE_DIR}/${ip}/dmesg
+        sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} last > ${SAVE_DIR}/${ip}/last
         touch ${SAVE_DIR}/${ip}/${hn}
     done
 }
