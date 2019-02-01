@@ -78,18 +78,24 @@ function collect_remote_logs() {
     if [[ ${HOST_IPS} == "" ]]
     then
         HOST_IPS=$(kubectl describe nodes | grep InternalIP | awk '{print $2}' | xargs)
+        HOSTNAMES=$(kubectl describe nodes | grep Hostname | awk '{print $2}' | xargs)
     fi
     if [[ ${OPT_R} == true ]]
     then
         mv ~/.ssh/known_hosts ~/.ssh/known_hosts.old
     fi
     echo "[INFO] HOST_IPS: ${HOST_IPS}"
-    for ip in ${HOST_IPS}
+    local arrhip=(${HOST_IPS})
+    local arrhn=(${HOSTNAMES})
+    for i in ${!arrhip[@]}
     do
-        echo "[INFO] Collecting logs from ${ip}"
+        local ip=${arrhip[$i]}
+        local hn=${arrhn[$i]}
+        echo "[INFO] Collecting logs from ${ip}, ${hn}"
         mkdir -p ${SAVE_DIR}/${ip}
         sshpass -p "${PASSWORD}" scp -o "StrictHostKeyChecking=no" "${USERNAME}@${ip}:/var/log/messages*" ${SAVE_DIR}/${ip}/
         sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} dmesg > ${SAVE_DIR}/${ip}/dmesg
+        touch ${SAVE_DIR}/${ip}/${hn}
     done
 }
 
@@ -102,6 +108,7 @@ function create_archive() {
         echo "[ERROR] Failed to create archive"
         exit 1
     fi
+    echo "[INFO] Archive size: $(ls -hl ${ARCHIVE} | awk '{print $5}')"
 }
 
 function upload_logs()
