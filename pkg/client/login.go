@@ -47,6 +47,11 @@ func (v *Volume) Login(multipath, round_robin bool) error {
 		co.Error(ctxt, err)
 		return err
 	}
+	if len(path) < 1 {
+		err = fmt.Errorf("Recieved no paths from ISCSI connector: %s", path)
+		co.Error(ctxt, err)
+		return err
+	}
 	v.DevicePath = path
 	co.Debugf(ctxt, "DevicePath for volume %s: %s", v.Name, v.DevicePath)
 	return nil
