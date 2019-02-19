@@ -158,9 +158,9 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 }
 
 func validateSnapId(snapId string) error {
-	const example = "/app_instances/my-app/storage_instances/storage-1/volumes/volume-1/snapshots/1536262088.285952448"
-	parts := strings.Split(strings.TrimLeft(snapId, "/"), "/")
-	if len(parts) != 8 {
+	const example = "CSI-pvc-2071cca0-3259-11e9-aba5-003048f5d94a:1550370547.151396819"
+	parts := strings.Split(snapId, ":")
+	if len(parts) != 2 {
 		return fmt.Errorf("Snapshot ID invalid.  Example: %s", example)
 	}
 	return nil
@@ -261,7 +261,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		if err = validateSnapId(snap.SnapshotId); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
-		params.CloneSnapSrc = snap.SnapshotId
+		src, err := d.dc.SnapshotPathFromCsiId(ctxt, snap.SnapshotId)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
+		params.CloneSnapSrc = src
 	}
 
 	// Handle req.CapacityRange

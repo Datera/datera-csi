@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	uuid "github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
 
+// NEVER CHANGE THIS AFTER v1.0 release
 const SnapDomainStr = "7079EAEC-2660-4A35-9A48-9C47204C01A9"
 
 var SnapDomain *uuid.UUID
@@ -25,6 +27,10 @@ type Snapshot struct {
 	Status string
 }
 
+// This is a workaround to allow for encoding the name of a CSI snapshot into a
+// normal UUID on the Datera side.  The domain of the uuids is hardcoded above
+// and should NEVER be changed, otherwise we lose our references to customer
+// snapshots between CSI plugin versions
 func initSnapDomain() *uuid.UUID {
 	sd, err := uuid.Parse(SnapDomainStr)
 	if err != nil {
@@ -37,6 +43,24 @@ func snapIdFromName(ctxt context.Context, name string) *uuid.UUID {
 	sid := uuid.NewSHA1(*SnapDomain, []byte(name))
 	co.Debugf(ctxt, "Generating Snapshot Id %s from name %s", sid.String(), name)
 	return &sid
+}
+
+func (r DateraClient) SnapshotPathFromCsiId(ctxt context.Context, csiId string) (string, error) {
+	parts := strings.Split(csiId, ":")
+	vid := parts[0]
+	snapTs := parts[0]
+	vol, err := r.GetVolume(vid, false, false)
+	if err != nil {
+		co.Errorf(ctxt, "Could not find volume from provided csi snapshot ID: %s, err: %s", csiId, err.Error())
+		return "", err
+	}
+	snaps, err := vol.ListSnapshots(snapTs)
+	if len(snaps) != 1 {
+		err = fmt.Errorf("Unexpected number of snapshots found for csi snapshot ID: %s, expected 1 found %d", csiId, len(snaps))
+		co.Error(ctxt, err)
+		return "", err
+	}
+	return snaps[0].Path, nil
 }
 
 func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, int, error) {
