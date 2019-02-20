@@ -256,7 +256,7 @@ func TestMountUnmount(t *testing.T) {
 	vol.Login(false, false)
 	defer vol.Logout()
 
-	if err := vol.Format("xfs", []string{}); err != nil {
+	if err := vol.Format("xfs", []string{}, 5); err != nil {
 		t.Fatal(err)
 	}
 	if err := vol.Mount(fmt.Sprintf("/mnt/my-dir-%s", dsdk.RandString(5)), []string{}); err != nil {
@@ -281,7 +281,7 @@ func TestBindMountUnBindMount(t *testing.T) {
 	vol.Login(false, false)
 	defer vol.Logout()
 
-	if err := vol.Format("ext4", []string{}); err != nil {
+	if err := vol.Format("ext4", []string{}, 5); err != nil {
 		t.Fatal(err)
 	}
 	r := dsdk.RandString(5)
@@ -311,6 +311,54 @@ func TestCreateDeleteSnapshot(t *testing.T) {
 	defer cleanv()
 	_, cleans := createSnapshot(t, client, vol)
 	defer cleans()
+}
+
+func TestListSnapshotsSingle(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	defer cleanv()
+	snap, cleans := createSnapshot(t, client, vol)
+	defer cleans()
+
+	snaps, err := vol.ListSnapshots(snap.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snaps) != 1 {
+		err := fmt.Errorf("Unexpected number of snapshots: 1 != %d", len(snaps))
+		t.Fatal(err)
+	}
+}
+
+func TestListSnapshotsMany(t *testing.T) {
+	client := getClient(t)
+	v := &VolOpts{
+		Size:         5,
+		Replica:      1,
+		WriteIopsMax: WIM,
+	}
+	_, vol, cleanv := createVolume(t, client, v)
+	defer cleanv()
+	_, cleans := createSnapshot(t, client, vol)
+	defer cleans()
+	_, cleans2 := createSnapshot(t, client, vol)
+	defer cleans2()
+	_, cleans3 := createSnapshot(t, client, vol)
+	defer cleans3()
+
+	snaps, err := vol.ListSnapshots("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snaps) != 3 {
+		err := fmt.Errorf("Unexpected number of snapshots: 3 != %d", len(snaps))
+		t.Fatal(err)
+	}
 }
 
 func TestCreateFromSnapshot(t *testing.T) {

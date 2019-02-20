@@ -240,6 +240,11 @@ func (r *Volume) DeleteSnapshot(id string) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "DeleteSnapshot")
 	co.Debugf(ctxt, "DeleteSnapshot invoked for %s", r.Name)
 	var found *dsdk.Snapshot
+	err := r.Reload(nil, false, false)
+	if err != nil {
+		co.Warning(ctxt, err)
+		return nil
+	}
 	for _, snap := range r.Ai.StorageInstances[0].Volumes[0].Snapshots {
 		if snap.Uuid == id || snap.UtcTs == id {
 			found = snap
@@ -266,24 +271,23 @@ func (r *Volume) DeleteSnapshot(id string) error {
 func (r *Volume) HasSnapshots() (bool, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "HasSnapshots")
 	co.Debugf(ctxt, "Volume %s HasSnapshots invoked\n", r.Name)
-	v := r.Ai.StorageInstances[0].Volumes[0]
-	rsnaps, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
-		Ctxt: ctxt,
-	})
+	snaps, err := r.ListSnapshots("")
 	if err != nil {
-		co.Error(ctxt, err)
 		return false, err
-	} else if apierr != nil {
-		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
-		return false, co.ErrTranslator(apierr)
 	}
-	return len(rsnaps) > 0, nil
+	return len(snaps) > 0, nil
 }
 
 func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debugf(ctxt, "Volume %s ListSnapshots invoked\n", r.Name)
 	snaps := []*Snapshot{}
+	// Reload volume (app_instance) to ensure data is valid
+	err := r.Reload(nil, false, false)
+	if err != nil {
+		co.Warning(ctxt, err)
+		return snaps, nil
+	}
 	v := r.Ai.StorageInstances[0].Volumes[0]
 	rsnaps, apierr, err := v.SnapshotsEp.List(&dsdk.SnapshotsListRequest{
 		Ctxt: ctxt,
@@ -312,15 +316,15 @@ func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 			})
 		}
 	}
+	co.Debugf(ctxt, "Returning Snapshots: %#v", snaps)
 	return snaps, nil
 }
 
 func (s *Snapshot) Reload() error {
 	ctxt := context.WithValue(s.ctxt, co.ReqName, "Snapshot Reload")
-	co.Debug(ctxt, "Snapshot Reload invoked")
-	snap, apierr, err := s.Vol.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Get(&dsdk.SnapshotsGetRequest{
-		Ctxt:      ctxt,
-		Timestamp: s.Id,
+	co.Debugf(ctxt, "Snapshot Reload invoked: %s", s.Id)
+	snap, apierr, err := s.Snap.Reload(&dsdk.SnapshotReloadRequest{
+		Ctxt: ctxt,
 	})
 	if err != nil {
 		co.Error(ctxt, err)

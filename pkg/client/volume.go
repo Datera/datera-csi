@@ -514,3 +514,22 @@ func (r *Volume) GetUsage() (int, int, int) {
 	avail := size - used
 	return size, used, avail
 }
+
+func (r *Volume) Reload(dc *DateraClient, qos, metadata bool) error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "Volume Reload")
+	co.Debugf(ctxt, "Volume Reload invoked: %s", r.Name)
+	newAi, apierr, err := r.Ai.Reload(&dsdk.AppInstanceReloadRequest{
+		Ctxt: ctxt,
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return co.ErrTranslator(apierr)
+	}
+	v, err := aiToClientVol(ctxt, newAi, qos, metadata, dc)
+	// Update reciever
+	*r = *v
+	return nil
+}
