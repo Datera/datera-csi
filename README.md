@@ -166,6 +166,89 @@ spec:
 ```bash
 $ kubectl create -f app.yaml
 ```
+## Clone A Volume
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-clone-volume
+spec:
+  storageClassName: dat-block-storage
+  dataSource:
+    name: new-csi-vol
+    kind: PersistentVolumeClaim
+    apiGroup: snapshot.storage.k8s.io
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+```
+
+
+## Snapshot Support (alpha)
+
+NOTE: CSI Snapshots are currently an Alpha feature in Kubernetes, weird
+behavior is expected.
+
+To create a volume snapshot in kubernetes you can use the following
+VolumeSnapshotClass and VolumeSnapshot as an example:
+
+Save the following as snap-class.yaml
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1alpha1
+kind: VolumeSnapshotClass
+metadata:
+  name: dat-snap-class
+snapshotter: dsp.csi.daterainc.io
+parameters:
+```
+
+```bash
+$ kubectl create -f snap-class.yaml
+```
+
+Save the following as snap.yaml
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1alpha1
+kind: VolumeSnapshot
+metadata:
+  name: csi-snap
+spec:
+  snapshotClassName: dat-snap-class
+  source:
+    name: csi-pvc
+    kind: PersistentVolumeClaim
+```
+```bash
+$ kubectl create -f snap.yaml
+```
+
+We can now view the snapshot using kubectl
+```bash
+$ kubectl get volumesnapshots
+NAME       AGE
+csi-snap   2m
+```
+
+Now we can use this snapshot to create a new PVC.
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-restore-from-snapshot
+spec:
+  storageClassName: dat-block-storage
+  dataSource:
+    name: new-csi-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+```
 
 ## Optional Secrets
 
@@ -207,3 +290,4 @@ $ kubectl create -f csi-datera-secrets-latest.yaml
 
 The only difference between the "secrets" yaml and the regular yaml is the
 use of secrets for the "username" and "password" fields.
+
