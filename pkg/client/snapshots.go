@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	uuid "github.com/google/uuid"
 
@@ -45,10 +46,13 @@ func snapIdFromName(ctxt context.Context, name string) *uuid.UUID {
 	return &sid
 }
 
-func (r DateraClient) SnapshotPathFromCsiId(ctxt context.Context, csiId string) (string, error) {
+func (r DateraClient) SnapshotPathFromCsiId(csiId string) (string, error) {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "SnapshotPathFromCsiId")
+	co.Debugf(ctxt, "SnapshotPathFromCsiId invoked.  csiId: %s", csiId)
 	parts := strings.Split(csiId, ":")
 	vid := parts[0]
-	snapTs := parts[0]
+	snapTs := parts[1]
+	co.Debugf(ctxt, "Snapshot parts: %s, %s", vid, snapTs)
 	vol, err := r.GetVolume(vid, false, false)
 	if err != nil {
 		co.Errorf(ctxt, "Could not find volume from provided csi snapshot ID: %s, err: %s", csiId, err.Error())
@@ -226,14 +230,32 @@ func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 		co.Error(ctxt, err)
 		return nil, err
 	}
-	return &Snapshot{
+	csnap := &Snapshot{
 		ctxt:   r.ctxt,
 		Snap:   snap,
 		Vol:    v,
 		Id:     snap.UtcTs,
 		Path:   snap.Path,
 		Status: snap.OpState,
-	}, nil
+	}
+	// Poll for availability
+	timeout := 30
+	for {
+		err = csnap.Reload()
+		if err != nil {
+			return csnap, err
+		}
+		if csnap.Status == "available" {
+			return csnap, nil
+		}
+		co.Debugf(ctxt, "Snapshot %s is not available yet", csnap.Id)
+		time.Sleep(time.Second * 1)
+		timeout--
+		if timeout <= 0 {
+			err := fmt.Errorf("Snapshot %s did not become available before timeout", csnap.Id)
+			return csnap, err
+		}
+	}
 }
 
 func (r *Volume) DeleteSnapshot(id string) error {
@@ -280,7 +302,7 @@ func (r *Volume) HasSnapshots() (bool, error) {
 
 func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
-	co.Debugf(ctxt, "Volume %s ListSnapshots invoked\n", r.Name)
+	co.Debugf(ctxt, "Volume %s ListSnapshots invoked. snapId: %s", r.Name, snapId)
 	snaps := []*Snapshot{}
 	// Reload volume (app_instance) to ensure data is valid
 	err := r.Reload(nil, false, false)

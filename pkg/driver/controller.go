@@ -261,7 +261,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		if err = validateSnapId(snap.SnapshotId); err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
-		src, err := d.dc.SnapshotPathFromCsiId(ctxt, snap.SnapshotId)
+		src, err := d.dc.SnapshotPathFromCsiId(snap.SnapshotId)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
