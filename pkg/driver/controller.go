@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -332,44 +331,44 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
 	return nil, status.Errorf(codes.Unimplemented, "ControllerPublishVolume Not Implemented")
-	if req.VolumeId == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
-	}
-	if req.VolumeCapability == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
-	}
-	if req.NodeId == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "NodeId cannot be empty")
-	}
-	am := req.VolumeCapability.GetAccessMode()
-	if am != nil {
-		mo := am.Mode.String()
-		if strings.Contains(mo, "WRITER") && req.Readonly {
-			return nil, status.Errorf(codes.AlreadyExists, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
-		}
-	}
-	_, err := d.dc.GetVolume(req.VolumeId, false, false)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, err.Error())
-	}
-	h, err := os.Hostname()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
-	}
-	return &csi.ControllerPublishVolumeResponse{
-		PublishContext: map[string]string{
-			"controller_host": h,
-		},
-	}, nil
+	// if req.VolumeId == "" {
+	// 	return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	// }
+	// if req.VolumeCapability == nil {
+	// 	return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
+	// }
+	// if req.NodeId == "" {
+	// 	return nil, status.Errorf(codes.InvalidArgument, "NodeId cannot be empty")
+	// }
+	// am := req.VolumeCapability.GetAccessMode()
+	// if am != nil {
+	// 	mo := am.Mode.String()
+	// 	if strings.Contains(mo, "WRITER") && req.Readonly {
+	// 		return nil, status.Errorf(codes.AlreadyExists, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
+	// 	}
+	// }
+	// _, err := d.dc.GetVolume(req.VolumeId, false, false)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.NotFound, err.Error())
+	// }
+	// h, err := os.Hostname()
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, err.Error())
+	// }
+	// return &csi.ControllerPublishVolumeResponse{
+	// 	PublishContext: map[string]string{
+	// 		"controller_host": h,
+	// 	},
+	// }, nil
 }
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
 	return nil, status.Errorf(codes.Unimplemented, "ControllerUnPublishVolume Not Implemented")
-	if req.VolumeId == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
-	}
-	return &csi.ControllerUnpublishVolumeResponse{}, nil
+	// if req.VolumeId == "" {
+	// 	return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
+	// }
+	// return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
 func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {

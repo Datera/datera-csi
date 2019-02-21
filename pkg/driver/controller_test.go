@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
@@ -180,5 +181,31 @@ func TestControllerCreateVolSnapshotVolumeSource(t *testing.T) {
 		VolumeId: volid,
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestControllerGetCapacity(t *testing.T) {
+	d := getDriverController(t)
+	if resp, err := d.GetCapacity(context.Background(), &csi.GetCapacityRequest{}); err != nil {
+		t.Fatal(err)
+	} else {
+		if resp.AvailableCapacity <= 0 {
+			t.Fatal(fmt.Errorf("Available capacity is lower than expected: %d", resp.AvailableCapacity))
+		}
+	}
+}
+
+func TestControllerListVolumes(t *testing.T) {
+	d := getDriverController(t)
+	_, _, cleanf := createVolume(t, d)
+	defer cleanf()
+	if resp, err := d.ListVolumes(context.Background(), &csi.ListVolumesRequest{
+		MaxEntries: 1,
+	}); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(resp.Entries) != 1 {
+			t.Fatal(fmt.Errorf("Volumes list did not return expected number of volumes. Expected 1, Found %d", len(resp.Entries)))
+		}
 	}
 }
