@@ -24,6 +24,11 @@ func (v *Volume) Format(fsType string, fsArgs []string, timeout int) error {
 	if v.Formatted {
 		co.Warningf(ctxt, "Volume %s already formatted: %s, %s", v.Name, v.FsType, v.FsArgs)
 		return nil
+	} else if fs, err := findFs(ctxt, v.DevicePath); err == nil {
+		v.Formatted = true
+		v.FsType = fs
+		co.Warningf(ctxt, "Volume %s already formatted: %s", v.Name, v.FsType)
+		return nil
 	}
 	if err := format(ctxt, v.DevicePath, fsType, fsArgs, timeout); err != nil {
 		return err
