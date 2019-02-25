@@ -126,7 +126,7 @@ Example PVC
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mypvc
+  name: csi-pvc
   namespace: default
 spec:
   accessModes:
@@ -160,31 +160,12 @@ spec:
   volumes:
     - name: my-app-volume
       persistentVolumeClaim:
-        claimName: mypvc
+        claimName: csi-pvc
 ```
 
 ```bash
 $ kubectl create -f app.yaml
 ```
-## Clone A Volume
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: csi-clone-volume
-spec:
-  storageClassName: dat-block-storage
-  dataSource:
-    name: new-csi-vol
-    kind: PersistentVolumeClaim
-    apiGroup: snapshot.storage.k8s.io
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 100Gi
-```
-
 
 ## Snapshot Support (alpha)
 
@@ -240,7 +221,7 @@ metadata:
 spec:
   storageClassName: dat-block-storage
   dataSource:
-    name: new-csi-snapshot
+    name: csi-snap
     kind: VolumeSnapshot
     apiGroup: snapshot.storage.k8s.io
   accessModes:
@@ -291,3 +272,12 @@ $ kubectl create -f csi-datera-secrets-latest.yaml
 The only difference between the "secrets" yaml and the regular yaml is the
 use of secrets for the "username" and "password" fields.
 
+## Collecting Logs
+You can collect logs from the entire Datera CSI plugin via the ``csi_log_collect.sh``
+script in the ``datera-csi/assets`` folder
+
+Basic log collection is very simple.  Run the script with no arguments on the
+Kubernetes master node.
+```bash
+$ ./assets/csi_log_collect.sh
+```
