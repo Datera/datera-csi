@@ -127,10 +127,13 @@ func readEnvVars() *EnvVars {
 //   * csi.IdentityServer
 //   * csi.NodeServer
 type Driver struct {
-	gs  *grpc.Server
-	dc  *dc.DateraClient
-	env *EnvVars
-	nid string
+	gs            *grpc.Server
+	dc            *dc.DateraClient
+	env           *EnvVars
+	nid           string
+	healthy       bool
+	vendorVersion string
+	manifest      *dc.Manifest
 
 	sock    string
 	version string
@@ -219,8 +222,13 @@ func (d *Driver) Heartbeater() {
 	co.Infof(ctxt, "Starting heartbeat service. Interval: %d", d.env.Heartbeat)
 	t := d.env.Heartbeat
 	for {
-		if err := d.dc.HealthCheck(); err != nil {
+		if mf, err := d.dc.HealthCheck(ctxt); err != nil {
+			d.healthy = false
+			d.manifest = mf
+			d.vendorVersion = mf.BuildVersion
 			co.Errorf(ctxt, "Heartbeat failure: %s\n", err)
+		} else {
+			d.healthy = true
 		}
 		Sleeper(t)
 	}
@@ -254,8 +262,12 @@ func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
 func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req interface{}) context.Context {
 	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
 	d.dc.WithContext(ctxt)
-	co.Infof(ctxt, "%s service '%s' called\n", piece, funcName)
-	co.Debugf(ctxt, "%s: %+v\n", funcName, req)
+	// We're not going to log the identity calls because they're really verbose with the
+	// liveness probe sidecar
+	if piece != "identity" {
+		co.Infof(ctxt, "%s service '%s' called\n", piece, funcName)
+		co.Debugf(ctxt, "%s: %+v\n", funcName, req)
+	}
 	return ctxt
 }
 

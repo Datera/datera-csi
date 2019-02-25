@@ -40,8 +40,9 @@ func (r *DateraClient) WithContext(ctxt context.Context) context.Context {
 	return r.ctxt
 }
 
-func (r *DateraClient) HealthCheck() error {
-	return r.sdk.HealthCheck()
+func (r *DateraClient) HealthCheck(ctxt context.Context) (*Manifest, error) {
+	r.ctxt = r.WithContext(ctxt)
+	return r.GetManifest()
 }
 
 func (r *DateraClient) LogPush(ctxt context.Context, rule, rotated string) error {

@@ -7,14 +7,24 @@ import (
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+
+	dc "github.com/Datera/datera-csi/pkg/client"
 )
 
 func (d *Driver) getManifestData() (map[string]string, error) {
 	//TODO(_alastor_): Populate manifest with Datera DSP information
-	mf, err := d.dc.GetManifest()
-	if err != nil {
-		return map[string]string{}, err
+	var (
+		mf  *dc.Manifest
+		err error
+	)
+	if d.manifest == nil {
+		mf, err = d.dc.GetManifest()
+		if err != nil {
+			return map[string]string{}, err
+		}
+		d.manifest = mf
 	}
+	mf = d.manifest
 	manifest := map[string]string{
 		"build_version":       mf.BuildVersion,
 		"callhome_enabled":    mf.CallhomeEnabled,
@@ -36,13 +46,9 @@ func (d *Driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoReques
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, err.Error())
 	}
-	vv, err := d.dc.VendorVersion()
-	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, err.Error())
-	}
 	return &csi.GetPluginInfoResponse{
 		Name:          driverName,
-		VendorVersion: vv,
+		VendorVersion: d.vendorVersion,
 		Manifest:      manifest,
 	}, nil
 }
@@ -64,10 +70,7 @@ func (d *Driver) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCa
 
 func (d *Driver) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
 	d.InitFunc(ctx, "identity", "Probe", *req)
-	if err := d.dc.HealthCheck(); err != nil {
-		return nil, status.Errorf(codes.Unavailable, err.Error())
-	}
 	return &csi.ProbeResponse{
-		Ready: &wrappers.BoolValue{Value: true},
+		Ready: &wrappers.BoolValue{Value: d.healthy},
 	}, nil
 }
