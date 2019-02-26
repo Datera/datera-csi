@@ -54,7 +54,7 @@ $ systemctl --all | grep iscsi-recv
 iscsi-recv.service       loaded    active     running   iscsi-recv container to host iscsiadm adapter service
 ```
 
-Modify deploy/kubernetes/with-host-iscsid/csi-datera-v1.0.4.yaml and update the
+Modify deploy/kubernetes/releases/1.0/csi-datera-v1.0.4.yaml and update the
 values for the following environment variables in the yaml:
 
 * `DAT_MGMT`   -- The management IP of the Datera system
