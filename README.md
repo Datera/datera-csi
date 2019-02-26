@@ -54,7 +54,7 @@ $ systemctl --all | grep iscsi-recv
 iscsi-recv.service       loaded    active     running   iscsi-recv container to host iscsiadm adapter service
 ```
 
-Modify deploy/kubernetes/with-host-iscsid/csi-datera-latest.yaml and update the
+Modify deploy/kubernetes/with-host-iscsid/csi-datera-v1.0.4.yaml and update the
 values for the following environment variables in the yaml:
 
 * `DAT_MGMT`   -- The management IP of the Datera system
@@ -115,7 +115,7 @@ NOTE: All parameters MUST be strings in the yaml file otherwise the kubectl
 parser will fail.  If in doubt, enclose each in double quotes ("")
 
 ```bash
-$ kubectl create -f csi/csi-datera-latest.yaml
+$ kubectl create -f csi/csi-datera-v1.0.4.yaml
 ```
 
 ## Create A Volume
@@ -266,7 +266,7 @@ $ kubectl create -f secrets.yaml
 Now install the CSI driver like above, but using the "secrets" yaml:
 
 ```bash
-$ kubectl create -f csi-datera-secrets-latest.yaml
+$ kubectl create -f csi-datera-secrets-v1.0.4.yaml
 ```
 
 The only difference between the "secrets" yaml and the regular yaml is the
