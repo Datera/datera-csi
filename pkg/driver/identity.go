@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
@@ -48,7 +49,7 @@ func (d *Driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoReques
 	}
 	return &csi.GetPluginInfoResponse{
 		Name:          driverName,
-		VendorVersion: d.vendorVersion,
+		VendorVersion: strings.Join(";", []string{d.version, d.vendorVersion}),
 		Manifest:      manifest,
 	}, nil
 }

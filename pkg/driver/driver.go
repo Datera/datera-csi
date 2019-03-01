@@ -148,10 +148,11 @@ func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 	}
 	dc.MetadataDebug = env.MetadataDebug
 	return &Driver{
-		dc:   client,
-		sock: env.Socket,
-		env:  env,
-		nid:  co.GetHost(),
+		dc:      client,
+		sock:    env.Socket,
+		env:     env,
+		nid:     co.GetHost(),
+		version: Version,
 	}, nil
 }
 
