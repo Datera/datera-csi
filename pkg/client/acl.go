@@ -43,9 +43,10 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 			return nil, err
 		}
 		init, apierr, err = r.sdk.Initiators.Create(&dsdk.InitiatorsCreateRequest{
-			Ctxt: ctxt,
-			Name: co.GenName(""),
-			Id:   iqn,
+			Ctxt:  ctxt,
+			Name:  co.GenName(""),
+			Id:    iqn,
+			Force: true,
 		})
 		if err != nil {
 			co.Error(ctxt, err)
