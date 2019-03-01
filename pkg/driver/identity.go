@@ -49,7 +49,7 @@ func (d *Driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoReques
 	}
 	return &csi.GetPluginInfoResponse{
 		Name:          driverName,
-		VendorVersion: strings.Join(";", []string{d.version, d.vendorVersion}),
+		VendorVersion: strings.Join([]string{d.version, d.vendorVersion}, ";"),
 		Manifest:      manifest,
 	}, nil
 }

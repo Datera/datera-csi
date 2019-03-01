@@ -5,6 +5,7 @@ This plugin uses Datera storage backend as distributed data storage for containe
 | Datera CSI Plugin Version | Supported CSI Versions | Supported Kubernetes Versions |
 | --- | --- | --- |
 | v1.0.4 | v1.0 | v1.13.X+ |
+| v1.0.5 | v1.0 | v1.13.X+ |
 
 ## Kubernetes Installation/Configuration (Kubernetes v1.13+ required)
 
