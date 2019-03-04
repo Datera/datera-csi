@@ -21,6 +21,7 @@ var SnapDomain *uuid.UUID
 
 type Snapshot struct {
 	ctxt   context.Context
+	dc     *DateraClient
 	Snap   *dsdk.Snapshot
 	Vol    *Volume
 	Id     string
@@ -46,7 +47,7 @@ func snapIdFromName(ctxt context.Context, name string) *uuid.UUID {
 	return &sid
 }
 
-func (r DateraClient) SnapshotPathFromCsiId(csiId string) (string, error) {
+func (r *DateraClient) SnapshotPathFromCsiId(csiId string) (string, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "SnapshotPathFromCsiId")
 	co.Debugf(ctxt, "SnapshotPathFromCsiId invoked.  csiId: %s", csiId)
 	parts := strings.Split(csiId, ":")
@@ -67,7 +68,7 @@ func (r DateraClient) SnapshotPathFromCsiId(csiId string) (string, error) {
 	return snaps[0].Path, nil
 }
 
-func (r DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, int, error) {
+func (r *DateraClient) ListSnapshots(snapId, sourceVol string, maxEntries, startToken int) ([]*Snapshot, int, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListSnapshots")
 	co.Debugf(ctxt, "ListSnapshots invoked.  snapId = %s, sourceVol = %s, maxEntries = %d, startToken = %d\n", snapId, sourceVol, maxEntries, startToken)
 	var (
@@ -194,6 +195,7 @@ func (r *Volume) GetSnapshotByUuid(id *uuid.UUID) (*Snapshot, error) {
 			}
 			return &Snapshot{
 				ctxt:   r.ctxt,
+				dc:     r.dc,
 				Snap:   snap,
 				Vol:    v,
 				Id:     snap.UtcTs,
@@ -232,6 +234,7 @@ func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
 	}
 	csnap := &Snapshot{
 		ctxt:   r.ctxt,
+		dc:     r.dc,
 		Snap:   snap,
 		Vol:    v,
 		Id:     snap.UtcTs,
@@ -262,7 +265,7 @@ func (r *Volume) DeleteSnapshot(id string) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "DeleteSnapshot")
 	co.Debugf(ctxt, "DeleteSnapshot invoked for %s", r.Name)
 	var found *dsdk.Snapshot
-	err := r.Reload(nil, false, false)
+	err := r.Reload(false, false)
 	if err != nil {
 		co.Warning(ctxt, err)
 		return nil
@@ -305,7 +308,7 @@ func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 	co.Debugf(ctxt, "Volume %s ListSnapshots invoked. snapId: %s", r.Name, snapId)
 	snaps := []*Snapshot{}
 	// Reload volume (app_instance) to ensure data is valid
-	err := r.Reload(nil, false, false)
+	err := r.Reload(false, false)
 	if err != nil {
 		co.Warning(ctxt, err)
 		return snaps, nil
@@ -330,6 +333,7 @@ func (r *Volume) ListSnapshots(snapId string) ([]*Snapshot, error) {
 			}
 			snaps = append(snaps, &Snapshot{
 				ctxt:   r.ctxt,
+				dc:     r.dc,
 				Snap:   s,
 				Vol:    v,
 				Id:     s.UtcTs,

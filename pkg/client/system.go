@@ -10,6 +10,8 @@ import (
 )
 
 type Capacity struct {
+	ctxt              context.Context
+	dc                *DateraClient
 	Total             int
 	Provisioned       int
 	FlashTotal        int
@@ -19,6 +21,8 @@ type Capacity struct {
 }
 
 type Manifest struct {
+	ctxt               context.Context
+	dc                 *DateraClient
 	BuildVersion       string
 	CallhomeEnabled    string
 	CompressionEnabled string
@@ -31,7 +35,7 @@ type Manifest struct {
 	Uuid               string
 }
 
-func (r DateraClient) GetCapacity() (*Capacity, error) {
+func (r *DateraClient) GetCapacity() (*Capacity, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetCapacity")
 	co.Debugf(ctxt, "GetCapacity invoked")
 	sys, apierr, err := r.sdk.System.Get(&dsdk.SystemGetRequest{
@@ -47,6 +51,8 @@ func (r DateraClient) GetCapacity() (*Capacity, error) {
 		return nil, co.ErrTranslator(apierr)
 	}
 	return &Capacity{
+		ctxt:              r.ctxt,
+		dc:                r,
 		Total:             sys.TotalCapacity,
 		Provisioned:       sys.TotalProvisionedCapacity,
 		FlashTotal:        sys.AllFlashTotalCapacity,
@@ -56,7 +62,7 @@ func (r DateraClient) GetCapacity() (*Capacity, error) {
 	}, nil
 }
 
-func (r DateraClient) VendorVersion() (string, error) {
+func (r *DateraClient) VendorVersion() (string, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "VendorVersion")
 	co.Debugf(ctxt, "VendorVersion invoked")
 	sys, apierr, err := r.sdk.System.Get(&dsdk.SystemGetRequest{
@@ -74,7 +80,7 @@ func (r DateraClient) VendorVersion() (string, error) {
 	return sys.BuildVersion, nil
 }
 
-func (r DateraClient) GetManifest() (*Manifest, error) {
+func (r *DateraClient) GetManifest() (*Manifest, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetManifest")
 	co.Debugf(ctxt, "GetManifest invoked")
 	sys, apierr, err := r.sdk.System.Get(&dsdk.SystemGetRequest{
@@ -90,6 +96,8 @@ func (r DateraClient) GetManifest() (*Manifest, error) {
 		return nil, co.ErrTranslator(apierr)
 	}
 	mf := &Manifest{
+		ctxt:               r.ctxt,
+		dc:                 r,
 		BuildVersion:       sys.BuildVersion,
 		CallhomeEnabled:    strconv.FormatBool(sys.CallhomeEnabled),
 		CompressionEnabled: strconv.FormatBool(sys.CompressionEnabled),

@@ -16,6 +16,7 @@ var (
 
 type Initiator struct {
 	ctxt context.Context
+	dc   *DateraClient
 	Init *dsdk.Initiator
 	Name string
 	Path string
@@ -24,7 +25,7 @@ type Initiator struct {
 
 // Gets an Initiator path based on IQN.  If that initiator does not exist it creates the Initiator
 // then returns the path to the newly created Initiator
-func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
+func (r *DateraClient) CreateGetInitiator() (*Initiator, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateGetInitiator")
 	co.Debugf(ctxt, "CreateGetInitiator invoked")
 	iqn, err := GetClientIqn(ctxt)
@@ -59,6 +60,7 @@ func (r DateraClient) CreateGetInitiator() (*Initiator, error) {
 	}
 	return &Initiator{
 		ctxt: ctxt,
+		dc:   r,
 		Init: init,
 		Name: init.Name,
 		Path: init.Path,

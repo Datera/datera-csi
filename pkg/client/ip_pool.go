@@ -9,12 +9,13 @@ import (
 
 type IpPool struct {
 	ctxt   context.Context
+	dc     *DateraClient
 	IpPool *dsdk.AccessNetworkIpPool
 	Name   string
 	Path   string
 }
 
-func (r DateraClient) GetIpPoolFromName(name string) (*IpPool, error) {
+func (r *DateraClient) GetIpPoolFromName(name string) (*IpPool, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetIpPoolFromName")
 	co.Debugf(ctxt, "GetIpPoolFromName invoked. Name: %s", name)
 	ipp, apierr, err := r.sdk.AccessNetworkIpPools.Get(&dsdk.AccessNetworkIpPoolsGetRequest{
@@ -30,6 +31,7 @@ func (r DateraClient) GetIpPoolFromName(name string) (*IpPool, error) {
 	}
 	return &IpPool{
 		ctxt:   ctxt,
+		dc:     r,
 		IpPool: ipp,
 		Name:   ipp.Name,
 		Path:   ipp.Path,
