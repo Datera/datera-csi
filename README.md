@@ -286,3 +286,18 @@ Kubernetes master node.
 ```bash
 $ ./assets/csi_log_collect.sh
 ```
+
+## Odd Case Environment Variables
+Sometimes customer setups require a bit of flexibility.  These environment
+variables allow for tuning the plugin to behave in atypical ways.  USE THESE
+WITH CAUTION.
+* DAT\_SOCKET               -- Socket that driver listens on
+* DAT\_HEARTBEAT            -- Interval to perform Datera heartbeat function
+* DAT\_TYPE                 -- Which CSI services to expose on the binary
+* DAT\_VOL\_PER\_NODE       -- Max volumes per node setting
+* DAT\_DISABLE\_MULTIPATH   -- Disable multipath (for use with bonded nics)
+* DAT\_REPLICA\_OVERRIDE    -- Override set replica counts to 1 (for single-node systems)
+* DAT\_METADATA\_DEBUG      -- Calculates metadata size before sending (for checking 2KB hard-limit)
+* DAT\_DISABLE\_LOGPUSH     -- Disables pushing plugin logs to the Datera system
+* DAT\_LOGPUSH\_INTERVAL    -- Sets interval between logpushes to the Datera system
+* DAT\_FORMAT\_TIMEOUT      -- Sets the timeout duration for volume format calls (default 60 seconds)
