@@ -59,6 +59,10 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	} else {
 		co.Debug(ctxt, "Skipping IP Pool registration due to Template")
 	}
+	// Online AI (to ensure targets are accessible)
+	if err = vol.Online(); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
 	// Login to target
 	if err = vol.Login(!d.env.DisableMultipath, (*md)["round_robin"] == "true"); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())

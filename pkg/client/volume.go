@@ -554,3 +554,20 @@ func (r *Volume) Resize(newSize int) error {
 	}
 	return r.Reload(false, false)
 }
+
+func (r *Volume) Online() error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "Volume Reload")
+	co.Debugf(ctxt, "Volume Reload invoked: %s", r.Name)
+	_, apierr, err := r.Ai.Set(&dsdk.AppInstanceSetRequest{
+		Ctxt:       ctxt,
+		AdminState: "online",
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return co.ErrTranslator(apierr)
+	}
+	return r.Reload(false, false)
+}
