@@ -281,7 +281,10 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 			ReplicaCount:  int(volOpts.Replica),
 		}
 		si := &dsdk.StorageInstance{
-			Name:    "storage-1",
+			Name: "storage-1",
+			IpPool: &dsdk.AccessNetworkIpPool{
+				Path: fmt.Sprintf("/access_network_ip_pools/%s", volOpts.IpPool),
+			},
 			Volumes: []*dsdk.Volume{vol},
 		}
 		ai = dsdk.AppInstancesCreateRequest{
