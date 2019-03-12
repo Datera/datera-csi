@@ -20,3 +20,10 @@
   * csi-snapshotter:v1.0.1
   * csi-node-driver-registrar:v1.0.1
   * livenessprobe:v1.0.2
+* v1.0.6 -- Bugfix for create\_mode, ip\_pools.  Moved iscsi-recv install
+            location from /tmp to /var/datera
+  * csi-provisioner:v1.0.1
+  * csi-attacher:v1.0.0
+  * csi-snapshotter:v1.0.1
+  * csi-node-driver-registrar:v1.0.1
+  * livenessprobe:v1.0.2

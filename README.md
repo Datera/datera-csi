@@ -50,7 +50,7 @@ $ ./assets/setup_iscsi.sh
 Created symlink from /etc/systemd/system/multi-user.target.wants/iscsi-recv.service to /lib/systemd/system/iscsi-recv.service.
 [INFO] Starting iscsi-recv service
 [INFO] Verifying service started correctly
-root      4879     1  0 19:50 ?        00:00:00 /tmp/iscsi-recv -addr unix:////tmp/csi-iscsi.sock
+root      4879     1  0 19:50 ?        00:00:00 /var/datera/iscsi-recv -addr unix:////var/datera/csi-iscsi.sock
 ```
 
 Check that the iscsi-recv service is running
