@@ -181,7 +181,7 @@ spec:
               mountPath: /var/lib/csi/
         - name: dat-csi-plugin-controller
           imagePullPolicy: Always
-          image: dateraiodev/dat-csi-plugin:latest
+          image: dateraiodev/dat-csi-plugin:v1.0.6
           command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
@@ -191,15 +191,9 @@ spec:
             - name: DAT_MGMT
               value: 1.1.1.1
             - name: DAT_USER
-              valueFrom:
-                  secretKeyRef:
-                      name: datera-secret
-                      key: username
+              value: admin
             - name: DAT_PASS
-              valueFrom:
-                  secretKeyRef:
-                      name: datera-secret
-                      key: password
+              value: password
             - name: DAT_TENANT
               value: /root
             - name: DAT_API
@@ -329,7 +323,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: dateraiodev/dat-csi-plugin:latest
+          image: dateraiodev/dat-csi-plugin:v1.0.6
           # The sleep is to allow the iscsid sidecar to start Running iscsiadm
           # -m session initializes /etc/iscsi/initiatorname.iscsi in this
           # container
@@ -342,15 +336,9 @@ spec:
             - name: DAT_MGMT
               value: 1.1.1.1
             - name: DAT_USER
-              valueFrom:
-                  secretKeyRef:
-                      name: datera-secret
-                      key: username
+              value: admin
             - name: DAT_PASS
-              valueFrom:
-                  secretKeyRef:
-                      name: datera-secret
-                      key: password
+              value: password
             - name: DAT_TENANT
               value: /root
             - name: DAT_API

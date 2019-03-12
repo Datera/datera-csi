@@ -44,6 +44,7 @@ type VolOpts struct {
 
 type Volume struct {
 	ctxt           context.Context
+	dc             *DateraClient
 	Ai             *dsdk.AppInstance
 	Name           string
 	AdminState     string
@@ -151,6 +152,7 @@ func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool
 
 	vol := &Volume{
 		ctxt:           ctxt,
+		dc:             client,
 		Ai:             ai,
 		Name:           ai.Name,
 		AdminState:     ai.AdminState,
@@ -200,7 +202,7 @@ func aiToClientVol(ctx context.Context, ai *dsdk.AppInstance, qos, metadata bool
 	return vol, nil
 }
 
-func (r DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, error) {
+func (r *DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "GetVolume")
 	co.Debugf(ctxt, "GetVolume invoked for %s", name)
 	if name == "" {
@@ -216,14 +218,14 @@ func (r DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, error
 	if apierr != nil {
 		return nil, co.ErrTranslator(apierr)
 	}
-	v, err := aiToClientVol(ctxt, newAi, qos, metadata, &r)
+	v, err := aiToClientVol(ctxt, newAi, qos, metadata, r)
 	if err != nil {
 		return nil, err
 	}
 	return v, nil
 }
 
-func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Volume, error) {
+func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateVolume")
 	co.Debugf(ctxt, "CreateVolume invoked for %s, volOpts: %#v", name, volOpts)
 	var ai dsdk.AppInstancesCreateRequest
@@ -279,7 +281,10 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 			ReplicaCount:  int(volOpts.Replica),
 		}
 		si := &dsdk.StorageInstance{
-			Name:    "storage-1",
+			Name: "storage-1",
+			IpPool: &dsdk.AccessNetworkIpPool{
+				Path: fmt.Sprintf("/access_network_ip_pools/%s", volOpts.IpPool),
+			},
 			Volumes: []*dsdk.Volume{vol},
 		}
 		ai = dsdk.AppInstancesCreateRequest{
@@ -296,7 +301,7 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return nil, co.ErrTranslator(apierr)
 	}
-	v, err := aiToClientVol(ctxt, newAi, false, false, &r)
+	v, err := aiToClientVol(ctxt, newAi, false, false, r)
 	v.Formatted = false
 	if qos && volOpts.Template == "" {
 		if err = v.SetPerformancePolicy(volOpts); err != nil {
@@ -310,14 +315,14 @@ func (r DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Vo
 	return v, nil
 }
 
-func (r DateraClient) DeleteVolume(name string, force bool) error {
+func (r *DateraClient) DeleteVolume(name string, force bool) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "DeleteVolume")
 	co.Debugf(ctxt, "DeleteVolume invoked for %s", name)
 	ai, apierr, err := r.sdk.AppInstances.Get(&dsdk.AppInstancesGetRequest{
 		Ctxt: ctxt,
 		Id:   name,
 	})
-	v, err := aiToClientVol(ctxt, ai, false, false, &r)
+	v, err := aiToClientVol(ctxt, ai, false, false, r)
 	if err != nil {
 		co.Error(ctxt, err)
 		return err
@@ -368,7 +373,7 @@ func (r *Volume) Delete(force bool) error {
 	return nil
 }
 
-func (r DateraClient) ListVolumes(maxEntries int, startToken int) ([]*Volume, error) {
+func (r *DateraClient) ListVolumes(maxEntries int, startToken int) ([]*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "ListVolumes")
 	co.Debug(ctxt, "ListVolumes invoked\n")
 	params := dsdk.ListParams{
@@ -388,7 +393,7 @@ func (r DateraClient) ListVolumes(maxEntries int, startToken int) ([]*Volume, er
 	}
 	vols := []*Volume{}
 	for _, ai := range resp {
-		v, err := aiToClientVol(ctxt, ai, false, false, &r)
+		v, err := aiToClientVol(ctxt, ai, false, false, r)
 		if err != nil {
 			co.Error(ctxt, err)
 			continue
@@ -515,7 +520,7 @@ func (r *Volume) GetUsage() (int, int, int) {
 	return size, used, avail
 }
 
-func (r *Volume) Reload(dc *DateraClient, qos, metadata bool) error {
+func (r *Volume) Reload(qos, metadata bool) error {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "Volume Reload")
 	co.Debugf(ctxt, "Volume Reload invoked: %s", r.Name)
 	newAi, apierr, err := r.Ai.Reload(&dsdk.AppInstanceReloadRequest{
@@ -528,8 +533,44 @@ func (r *Volume) Reload(dc *DateraClient, qos, metadata bool) error {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		return co.ErrTranslator(apierr)
 	}
-	v, err := aiToClientVol(ctxt, newAi, qos, metadata, dc)
+	v, err := aiToClientVol(ctxt, newAi, qos, metadata, r.dc)
 	// Update reciever
 	*r = *v
 	return nil
+}
+
+func (r *Volume) Resize(newSize int) error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "Volume Resize")
+	co.Debugf(ctxt, "Volume Resize invoked: %s", r.Name)
+
+	v := r.Ai.StorageInstances[0].Volumes[0]
+	_, apierr, err := v.Set(&dsdk.VolumeSetRequest{
+		Ctxt: ctxt,
+		Size: newSize,
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return co.ErrTranslator(apierr)
+	}
+	return r.Reload(false, false)
+}
+
+func (r *Volume) Online() error {
+	ctxt := context.WithValue(r.ctxt, co.ReqName, "Volume Reload")
+	co.Debugf(ctxt, "Volume Reload invoked: %s", r.Name)
+	_, apierr, err := r.Ai.Set(&dsdk.AppInstanceSetRequest{
+		Ctxt:       ctxt,
+		AdminState: "online",
+	})
+	if err != nil {
+		co.Error(ctxt, err)
+		return err
+	} else if apierr != nil {
+		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
+		return co.ErrTranslator(apierr)
+	}
+	return r.Reload(false, false)
 }

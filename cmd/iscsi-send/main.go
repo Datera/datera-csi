@@ -69,5 +69,9 @@ func main() {
 	if err != nil && !strings.Contains(err.Error(), "exit status 21") {
 		co.Fatalf(ctx, "Could not send args: %v", err)
 	}
-	co.Debugf(ctx, "Iscsiadm Result: %s", r.Result)
+	if r != nil {
+		co.Debugf(ctx, "Iscsiadm Result: %s", r.Result)
+	} else {
+		co.Debug(ctx, "Iscsiadm did not return a result, but did not err")
+	}
 }

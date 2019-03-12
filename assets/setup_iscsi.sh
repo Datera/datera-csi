@@ -1,15 +1,16 @@
 #!/bin/bash
 
 IFILE="https://github.com/Datera/datera-csi/releases/download/v1.0.3/iscsi-recv.linux.x86-64"
-SFILE="/tmp/iscsi-recv"
+DIR="/var/datera"
+SFILE="/var/datera/iscsi-recv"
 SCSI_SHA1="809e0816f6a294c68c07a71f7c7206f4ac165d9b"
-SOCK="/tmp/csi-iscsi.sock"
+SOCK="/var/datera/csi-iscsi.sock"
 
 SCSI_SERVICE="[Unit]
 Description = iscsi-recv container to host iscsiadm adapter service
 
 [Service]
-ExecStart = /tmp/iscsi-recv -addr unix:///${SOCK}
+ExecStart = /var/datera/iscsi-recv -addr unix:///${SOCK}
 
 [Install]
 WantedBy = multi-user.target"
@@ -36,6 +37,7 @@ function check_external_dependencies()
 function get_and_start_iscsi_recv()
 {
     echo "[INFO] Downloading iscsi-recv"
+    mkdir -p ${DIR}
     if ! curl -f -L --silent "${IFILE}" > "${SFILE}"
     then
         echo "[ERROR] Downloading iscsi-recv binary from ${IFILE}"

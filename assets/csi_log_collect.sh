@@ -46,6 +46,11 @@ function collect_pod_logs()
     ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}/describe.txt
     for c in ${containers}
     do
+        if [[ ${OPT_I} == true ]] && [[ ${c} == *"liveness"* ]]
+        then
+            echo "[INFO] Skipping liveness probe log collection"
+            continue
+        fi
         echo "[INFO] Saving container logfile: ${c}"
         ${KUBECTL} logs --namespace kube-system ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}.txt
     done
@@ -63,6 +68,8 @@ function collect_logs()
     mkdir -p ${SAVE_DIR}/$(hostname)
     cat /var/log/messages > ${SAVE_DIR}/$(hostname)/messages
     dmesg > ${SAVE_DIR}/$(hostname)/dmesg
+    # iscsi-recv logs
+    journalctl -u iscsi-recv.service > ${SAVE_DIR}/$(hostname)/iscsi-recv
     # Find relevant pods
     local pods=$(${KUBECTL} get pods --namespace kube-system | grep -E "${POD_REGEX}" | awk '{print $1}')
     # Collect pod logs
@@ -94,6 +101,7 @@ function collect_remote_logs() {
         echo "[INFO] Collecting logs from ${ip}, ${hn}"
         mkdir -p ${SAVE_DIR}/${ip}
         sshpass -p "${PASSWORD}" scp -o "StrictHostKeyChecking=no" "${USERNAME}@${ip}:/var/log/messages*" ${SAVE_DIR}/${ip}/
+        sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} journalctl -u iscsi-recv.service > ${SAVE_DIR}/${ip}/iscsi-recv
         sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} dmesg > ${SAVE_DIR}/${ip}/dmesg
         sshpass -p "${PASSWORD}" ssh -o "StrictHostKeyChecking=no" ${USERNAME}@${ip} last > ${SAVE_DIR}/${ip}/last
         touch ${SAVE_DIR}/${ip}/${hn}
@@ -135,6 +143,8 @@ Usage: $0 [-k KUBECTL -p POD_REGEX -hs]
 -h Print Help (optional)
 -s Skip dependency check (optional)
 -u Upload logs to /dumps (optional)
+-i Skip liveness probe log collect (optional, useful if hanging on liveness
+   probe log collection
 -k KUBECTL Use non-standard kubectl (optional, default: kubectl)
 -p POD_REGEX Regex (optional, grep -E compatible) to match pods for log collection
 -n USERNAME Username for kubernetes nodes (default: root)
@@ -147,7 +157,7 @@ Usage: $0 [-k KUBECTL -p POD_REGEX -hs]
 }
 
 OPT_S=false
-while getopts ":hsurk:p:n:l:" option
+while getopts ":hsurik:p:n:l:" option
 do
     case "${option}"
     in
@@ -166,6 +176,8 @@ do
         b) HOST_IPS=$(echo "${OPTARG}" | sed 's/,/ /g')
           ;;
         r) OPT_R=true
+          ;;
+        i) OPT_I=true
           ;;
         \?) echo "Invalid Option: -${OPTARG}" >&2; exit 1
           ;;

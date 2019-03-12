@@ -46,18 +46,22 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 
-	// Setup IpPool
-	if vol.Template == "" {
-		co.Debugf(ctxt, "Registering IP Pool: %s", (*md)["ip_pool"])
-		if ipp, err := d.dc.GetIpPoolFromName((*md)["ip_pool"]); err != nil {
-			return nil, status.Errorf(codes.NotFound, err.Error())
-		} else {
-			if err = vol.RegisterIpPool(ipp); err != nil {
-				return nil, status.Errorf(codes.Unknown, err.Error())
-			}
-		}
-	} else {
-		co.Debug(ctxt, "Skipping IP Pool registration due to Template")
+	// // Setup IpPool
+	// if vol.Template == "" {
+	// 	co.Debugf(ctxt, "Registering IP Pool: %s", (*md)["ip_pool"])
+	// 	if ipp, err := d.dc.GetIpPoolFromName((*md)["ip_pool"]); err != nil {
+	// 		return nil, status.Errorf(codes.NotFound, err.Error())
+	// 	} else {
+	// 		if err = vol.RegisterIpPool(ipp); err != nil {
+	// 			return nil, status.Errorf(codes.Unknown, err.Error())
+	// 		}
+	// 	}
+	// } else {
+	// 	co.Debug(ctxt, "Skipping IP Pool registration due to Template")
+	// }
+	// Online AI (to ensure targets are accessible)
+	if err = vol.Online(); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	// Login to target
 	if err = vol.Login(!d.env.DisableMultipath, (*md)["round_robin"] == "true"); err != nil {
@@ -263,4 +267,8 @@ func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeS
 			},
 		},
 	}, nil
+}
+
+func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	return nil, nil
 }
