@@ -70,8 +70,6 @@ func main() {
 		co.Fatalf(ctx, "Could not send args: %v", err)
 	}
 	if r != nil {
-		co.Debugf(ctx, "Iscsiadm Result: %s", r.Result)
-	} else {
-		co.Debug(ctx, "Iscsiadm did not return a result, but did not err")
+		fmt.Println(r.Result)
 	}
 }
