@@ -59,3 +59,7 @@ build: compile iscsi-rpc
 build-release: compile iscsi-rpc
 	@echo "==> Building Docker Image $(VERSION)"
 	@docker build -t "dateraiodev/dat-csi-plugin:$(VERSION)" ../.. -f Dockerfile
+
+build-release-patch: compile iscsi-rpc
+	@echo "==> Building Docker Image $(VERSION).p1"
+	@docker build -t "dateraiodev/dat-csi-plugin:$(VERSION).p1" ../.. -f Dockerfile
