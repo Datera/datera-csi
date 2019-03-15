@@ -181,7 +181,7 @@ spec:
               mountPath: /var/lib/csi/
         - name: dat-csi-plugin-controller
           imagePullPolicy: Always
-          image: dateraiodev/dat-csi-plugin:v1.0.6
+          image: dateraiodev/dat-csi-plugin:v1.0.6.p1
           command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
@@ -323,7 +323,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: dateraiodev/dat-csi-plugin:v1.0.6
+          image: dateraiodev/dat-csi-plugin:v1.0.6.p1
           # The sleep is to allow the iscsid sidecar to start Running iscsiadm
           # -m session initializes /etc/iscsi/initiatorname.iscsi in this
           # container
