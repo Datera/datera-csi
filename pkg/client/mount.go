@@ -29,6 +29,10 @@ func (v *Volume) Format(fsType string, fsArgs []string, timeout int) error {
 		v.FsType = fs
 		co.Warningf(ctxt, "Volume %s already formatted: %s", v.Name, v.FsType)
 		return nil
+	} else if mnt, err := findMnt(ctxt, v.DevicePath); err == nil {
+		v.Formatted = true
+		co.Warningf(ctxt, "Volume %s already formatted and mounted: %s", v.Name, mnt)
+		return nil
 	}
 	if err := format(ctxt, v.DevicePath, fsType, fsArgs, timeout); err != nil {
 		return err
@@ -41,8 +45,12 @@ func (v *Volume) Format(fsType string, fsArgs []string, timeout int) error {
 func format(ctxt context.Context, device, fsType string, fsArgs []string, timeout int) error {
 	cmd := append(append([]string{fmt.Sprintf("mkfs.%s", fsType)}, fsArgs...), device)
 	for {
-		if _, err := co.RunCmd(ctxt, cmd...); err != nil {
+		if out, err := co.RunCmd(ctxt, cmd...); err != nil {
 			co.Info(ctxt, err)
+			if out != "" && strings.Contains(out, "will not make a filesystem here") {
+				co.Warningf(ctxt, "Device %s is already mounted", device)
+				return err
+			}
 			if timeout < 0 {
 				co.Errorf(ctxt, "Could not format device %s, before timeout reached: %s", device, err.Error())
 				return err
@@ -145,7 +153,7 @@ func devLink(ctxt context.Context, device, dest string) error {
 }
 
 func findFs(ctxt context.Context, device string) (string, error) {
-	cmd := []string{"blkid", device}
+	cmd := []string{"blkid", fmt.Sprintf("'%s'", device)}
 	out, err := co.RunCmd(ctxt, cmd...)
 	if err != nil {
 		return "", err
@@ -157,6 +165,16 @@ func findFs(ctxt context.Context, device string) (string, error) {
 	} else {
 		return k, nil
 	}
+}
+
+func findMnt(ctxt context.Context, device string) (string, error) {
+	cmd := []string{"grep", fmt.Sprintf("'%s'"), "/proc/mounts"}
+	out, err := co.RunCmd(ctxt, cmd...)
+	if err != nil {
+		return "", err
+	}
+	co.Debugf(ctxt, "%s result: %s", cmd, out)
+	return out, nil
 }
 
 func mount(ctxt context.Context, device, dest string, options []string) error {
