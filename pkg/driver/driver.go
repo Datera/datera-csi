@@ -35,6 +35,9 @@ const (
 	EnvLogPushInterval  = "DAT_LOGPUSH_INTERVAL"
 	EnvFormatTimeout    = "DAT_FORMAT_TIMEOUT"
 
+	Ext4 = "ext4"
+	Xfs  = "xfs"
+
 	IdentityType = iota + 1
 	ControllerType
 	NodeType
@@ -53,8 +56,16 @@ var (
 		"conident":   ControllerIdentityType,
 		"all":        AllType,
 	}
-	Version = "No Version Provided"
-	Githash = "No Githash Provided"
+	Version          = "No Version Provided"
+	Githash          = "No Githash Provided"
+	SupportedFsTypes = map[string]struct{}{
+		Ext4: struct{}{},
+		Xfs:  struct{}{},
+	}
+	DefaultFsArgs = map[string]string{
+		Ext4: "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F",
+		Xfs:  "",
+	}
 )
 
 type EnvVars struct {
@@ -120,6 +131,19 @@ func readEnvVars() *EnvVars {
 		LogPushInterval:  int(lpi),
 		FormatTimeout:    int(ft),
 	}
+}
+
+func isSupportedFs(fs string) bool {
+	_, ok := SupportedFsTypes[fs]
+	return ok
+}
+
+func supportedFsTypes() []string {
+	types := []string{}
+	for k := range SupportedFsTypes {
+		types = append(types, k)
+	}
+	return types
 }
 
 // Driver is a single-binary implementation of:
@@ -272,13 +296,14 @@ func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req inter
 	return ctxt
 }
 
-func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.VolumeCapability) {
+func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.VolumeCapability) error {
 	// Record req.VolumeCapabilities in metadata We don't actually do anything
 	// with this information because it's all the same to us, but we should
 	// keep it for future product filtering/aggregate operations
 	if vc == nil {
-		co.Warningf(ctxt, "VolumeCapability is nil")
-		return
+		err := fmt.Errorf("VolumeCapability is nil")
+		co.Warning(ctxt, err)
+		return err
 	}
 	var (
 		at        string
@@ -295,11 +320,16 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	case *csi.VolumeCapability_Mount:
 		at = "mount"
 		fs = vc.GetMount().FsType
+		if !isSupportedFs(fs) {
+			err := fmt.Errorf("Unsupported filesystem type: %s, supported types are [%s]", fs, supportedFsTypes())
+			co.Error(ctxt, err)
+			return err
+		}
 		co.Debugf(ctxt, "Registering Filesystem %s", fs)
 		mountArgs = strings.Join(vc.GetMount().MountFlags, "")
 		co.Debugf(ctxt, "Registering MountFlags %s", mountArgs)
 	default:
-		at = "unknown"
+		return fmt.Errorf("Unsupported VolumeCapability: %s.  Supported capabilities are Mount and Block", fs)
 	}
 	co.Debugf(ctxt, "Registering VolumeCapability %s", at)
 	co.Debugf(ctxt, "Registering VolumeCapability %s", mo)
@@ -310,6 +340,7 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	}
 	(*md)["access_mode"] = mo
 	co.Debugf(ctxt, "VolumeMetadata: %#v", *md)
+	return nil
 }
 
 // For finer grained sleeping, interval is specified in seconds

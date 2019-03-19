@@ -6,6 +6,8 @@ This plugin uses Datera storage backend as distributed data storage for containe
 | --- | --- | --- |
 | v1.0.4 | v1.0 | v1.13.X+ |
 | v1.0.5 | v1.0 | v1.13.X+ |
+| v1.0.6 | v1.0 | v1.13.X+ |
+| v1.0.7 | v1.0 | v1.13.X+ |
 
 ## Kubernetes Installation/Configuration (Kubernetes v1.13+ required)
 
@@ -188,6 +190,26 @@ metadata:
   name: dat-snap-class
 snapshotter: dsp.csi.daterainc.io
 parameters:
+```
+
+Here are a list of supported snapshot parameters for the plugin:
+(v1.0.7+)
+
+Name                        |     Default
+------------------------    |     ------------
+``remote_provider_uuid``    |     ``""``
+``type``                    |     ``local`` options: local, remote, local\_and\_remote
+
+Example VolumeSnapshotClass yaml file with parameters:
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1alpha1
+kind: VolumeSnapshotClass
+metadata:
+  name: dat-snap-class
+snapshotter: dsp.csi.daterainc.io
+parameters:
+  remote_provider: c7f97223-81d9-44fe-ae7b-7c27daf6c288
+  type: local_and_remote
 ```
 
 ```bash

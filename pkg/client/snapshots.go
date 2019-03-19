@@ -19,6 +19,11 @@ const SnapDomainStr = "7079EAEC-2660-4A35-9A48-9C47204C01A9"
 
 var SnapDomain *uuid.UUID
 
+type SnapOpts struct {
+	RemoteProviderUuid string
+	Type               string
+}
+
 type Snapshot struct {
 	ctxt   context.Context
 	dc     *DateraClient
@@ -208,13 +213,15 @@ func (r *Volume) GetSnapshotByUuid(id *uuid.UUID) (*Snapshot, error) {
 
 }
 
-func (r *Volume) CreateSnapshot(name string) (*Snapshot, error) {
+func (r *Volume) CreateSnapshot(name string, snapOpts *SnapOpts) (*Snapshot, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateSnapshot")
 	co.Debugf(ctxt, "CreateSnapshot invoked for %s", r.Name)
 	sid := snapIdFromName(ctxt, name)
 	snap, apierr, err := r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Create(&dsdk.SnapshotsCreateRequest{
-		Ctxt: ctxt,
-		Uuid: sid.String(),
+		Ctxt:               ctxt,
+		Uuid:               sid.String(),
+		RemoteProviderUuid: snapOpts.RemoteProviderUuid,
+		Type:               snapOpts.Type,
 	})
 	if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)

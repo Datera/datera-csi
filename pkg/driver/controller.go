@@ -30,7 +30,7 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	}
 	vo := &dc.VolOpts{}
 	var err error
-	co.Debugf(ctxt, "Filtered Params: %s", params)
+	co.Debugf(ctxt, "Volume Params: %s", params)
 	// set defaults
 	if _, ok := params["iops_per_gb"]; !ok {
 		params["iops_per_gb"] = "0"
@@ -73,9 +73,6 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	}
 	if _, ok := params["total_bandwidth_max"]; !ok {
 		params["total_bandwidth_max"] = "0"
-	}
-	if _, ok := params["fs_type"]; !ok {
-		params["fs_type"] = "ext4"
 	}
 	if _, ok := params["fs_args"]; !ok {
 		params["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
@@ -143,17 +140,46 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	}
 	vo.TotalBandwidthMax = int(val)
 	vo.FsType = params["fs_type"]
+	if !isSupportedFs(vo.FsType) {
+		err := fmt.Errorf("Unsupported filesystem type: %s, supported types are [%s]", vo.FsType, supportedFsTypes())
+		co.Error(ctxt, err)
+		return vo, err
+	}
 	// This restriction is to prevent exceeding 2048 characters in metadata
 	if len(params["fs_args"]) > 200 {
 		return nil, fmt.Errorf("fs_args must be <= 200 characters")
 	}
-	vo.FsArgs = strings.Split(params["fs_args"], " ")
+	if params["fs_args"] == "" {
+		vo.FsArgs = strings.Split(DefaultFsArgs[vo.FsType], " ")
+	} else {
+		vo.FsArgs = strings.Split(params["fs_args"], " ")
+	}
 	b, err = strconv.ParseBool(params["delete_on_unmount"])
 	if err != nil {
 		return nil, err
 	}
 	vo.DeleteOnUnmount = b
 	return vo, nil
+}
+
+func parseSnapParams(ctxt context.Context, params map[string]string) (*dc.SnapOpts, error) {
+	//Golang makes something that should be simple, repetative and gross
+	if params == nil {
+		params = make(map[string]string, 16)
+	}
+	so := &dc.SnapOpts{}
+	// var err error
+	co.Debugf(ctxt, "Snapshot Params: %s", params)
+	// set defaults
+	if _, ok := params["remote_provider_uuid"]; !ok {
+		params["remote_provider_uuid"] = ""
+	}
+	if _, ok := params["type"]; !ok {
+		params["type"] = "local"
+	}
+	so.RemoteProviderUuid = params["remote_provider_uuid"]
+	so.Type = params["type"]
+	return so, nil
 }
 
 func validateSnapId(snapId string) error {
@@ -235,7 +261,9 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeCapabilities cannot be empty")
 	}
 	for _, vc := range vcs {
-		RegisterVolumeCapability(ctxt, md, vc)
+		if err := RegisterVolumeCapability(ctxt, md, vc); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
 	}
 	co.Debugf(ctxt, "Metadata after registering VolumeCapabilities: %#v", *md)
 	// Handle req.Parameters
@@ -331,44 +359,11 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
 	return nil, status.Errorf(codes.Unimplemented, "ControllerPublishVolume Not Implemented")
-	// if req.VolumeId == "" {
-	// 	return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
-	// }
-	// if req.VolumeCapability == nil {
-	// 	return nil, status.Errorf(codes.InvalidArgument, "VolumeCapability cannot be nil")
-	// }
-	// if req.NodeId == "" {
-	// 	return nil, status.Errorf(codes.InvalidArgument, "NodeId cannot be empty")
-	// }
-	// am := req.VolumeCapability.GetAccessMode()
-	// if am != nil {
-	// 	mo := am.Mode.String()
-	// 	if strings.Contains(mo, "WRITER") && req.Readonly {
-	// 		return nil, status.Errorf(codes.AlreadyExists, fmt.Sprintf("Volume cannot be publshed as ReadOnly with AccessMode %s simultaneously", mo))
-	// 	}
-	// }
-	// _, err := d.dc.GetVolume(req.VolumeId, false, false)
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.NotFound, err.Error())
-	// }
-	// h, err := os.Hostname()
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.Internal, err.Error())
-	// }
-	// return &csi.ControllerPublishVolumeResponse{
-	// 	PublishContext: map[string]string{
-	// 		"controller_host": h,
-	// 	},
-	// }, nil
 }
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
 	return nil, status.Errorf(codes.Unimplemented, "ControllerUnPublishVolume Not Implemented")
-	// if req.VolumeId == "" {
-	// 	return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
-	// }
-	// return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
 func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
@@ -499,7 +494,7 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 }
 
 func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	d.InitFunc(ctx, "controller", "CreateSnapshot", *req)
+	ctxt := d.InitFunc(ctx, "controller", "CreateSnapshot", *req)
 	if req.SourceVolumeId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "SourceVolumeId cannot be empty")
 	}
@@ -510,7 +505,11 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
 	}
-	snap, err := vol.CreateSnapshot(req.Name)
+	params, err := parseSnapParams(ctxt, req.Parameters)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	snap, err := vol.CreateSnapshot(req.Name, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}

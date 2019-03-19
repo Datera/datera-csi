@@ -36,7 +36,9 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	RegisterVolumeCapability(ctxt, md, vc)
+	if err := RegisterVolumeCapability(ctxt, md, vc); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
 	// Setup ACL
 	init, err := d.dc.CreateGetInitiator()
 	if err != nil {
@@ -75,12 +77,14 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		if fs := (*md)["fs_type"]; fs != "" {
 			// Mount Device
 			fsType, fsArgs := fs, strings.Split((*md)["fs_args"], " ")
-			err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
-			if err != nil {
-				return nil, status.Errorf(codes.Unknown, err.Error())
+			if !vol.Formatted && (*md)["formatted"] != "true" {
+				err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
+				if err != nil {
+					return nil, status.Errorf(codes.Unknown, err.Error())
+				}
+				vol.Formatted = true
+				(*md)["formatted"] = "true"
 			}
-			vol.Formatted = true
-			(*md)["formatted"] = "true"
 			mountArgs := strings.Split((*md)["m_args"], " ")
 			err = vol.Mount(req.StagingTargetPath, mountArgs)
 			if err != nil {
@@ -175,7 +179,9 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	RegisterVolumeCapability(ctxt, md, vc)
+	if err := RegisterVolumeCapability(ctxt, md, vc); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
 	for _, bm := range strings.Split((*md)["bind_mount"], ",") {
 		vol.BindMountPaths.Add(bm)
 	}

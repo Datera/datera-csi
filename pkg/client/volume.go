@@ -16,6 +16,7 @@ type VolOpts struct {
 	Size                    int      `json:"size,omitempty"`
 	Replica                 int      `json:"replica,omitempty"`
 	Template                string   `json:"template,omitempty"`
+	RemoteProvider          string   `json:"remote_provider,omitempty"`
 	FsType                  string   `json:"fs_type,omitempty"`
 	FsArgs                  []string `json:"fs_args,omitempty"`
 	PlacementMode           string   `json:"placement,omitempty"`
