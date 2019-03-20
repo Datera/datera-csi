@@ -196,7 +196,19 @@ func mount(ctxt context.Context, device, dest string, options []string) error {
 	if f, err := os.Stat(dest); err != nil && !f.IsDir() && strings.HasPrefix(device, "/dev/") {
 		return devLink(ctxt, device, dest)
 	} else {
-		fs, err := findFs(ctxt, device)
+		// Sometimes blkid returns no output right after format.
+		// We'll give it a chance before falling back
+		fs, err := func() (string, error) {
+			timeout := 5
+			for {
+				fs, err := findFs(ctxt, device)
+				if fs != "" || timeout <= 0 {
+					return fs, err
+				}
+				time.Sleep(2 * time.Second)
+				timeout--
+			}
+		}()
 		if fs == "" {
 			co.Warning(ctxt, "Couldn't detect filesystem from blkid output")
 			// Mount to directory
