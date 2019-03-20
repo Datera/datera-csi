@@ -321,7 +321,7 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 		at = "mount"
 		fs = vc.GetMount().FsType
 		if !isSupportedFs(fs) {
-			err := fmt.Errorf("Unsupported filesystem type: %s, supported types are [%s]", fs, supportedFsTypes())
+			err := fmt.Errorf("Unsupported filesystem type: %s, supported types :re %s", fs, supportedFsTypes())
 			co.Error(ctxt, err)
 			return err
 		}

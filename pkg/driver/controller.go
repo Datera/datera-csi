@@ -74,6 +74,9 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	if _, ok := params["total_bandwidth_max"]; !ok {
 		params["total_bandwidth_max"] = "0"
 	}
+	if _, ok := params["fs_type"]; !ok {
+		params["fs_type"] = "ext4"
+	}
 	if _, ok := params["fs_args"]; !ok {
 		params["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
 	}
@@ -141,7 +144,7 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	vo.TotalBandwidthMax = int(val)
 	vo.FsType = params["fs_type"]
 	if !isSupportedFs(vo.FsType) {
-		err := fmt.Errorf("Unsupported filesystem type: %s, supported types are [%s]", vo.FsType, supportedFsTypes())
+		err := fmt.Errorf("Unsupported filesystem type: %s, supported types are %s", vo.FsType, supportedFsTypes())
 		co.Error(ctxt, err)
 		return vo, err
 	}
