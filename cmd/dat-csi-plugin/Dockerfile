@@ -6,7 +6,8 @@ RUN apk add --no-cache ca-certificates \
                        xfsprogs \
                        btrfs-progs \
                        zfs \
-                       mkinitfs
+                       mkinitfs \
+                       util-linux
 
 
 ADD assets/driver-logrotate /etc/logrotate.d/

@@ -192,6 +192,29 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/
+        - name: csi-resizer
+          image: quay.io/k8scsi/csi-resizer:canary
+          args:
+            - "--v=5"
+            - "--csi-address=$(DAT_SOCKET)"
+            - "--leader-election"
+            - "--leader-election-namespace=$(MY_NAMESPACE)"
+            - "--leader-election-identity=$(MY_NAME)"
+          env:
+            - name: MY_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DAT_SOCKET
+              value: unix:///var/lib/csi/io.daterainc.csi.dsp/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: dat-csi-plugin-controller
           image: dateraiodev/dat-csi-plugin:latest
           env:

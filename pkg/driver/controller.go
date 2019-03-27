@@ -490,6 +490,8 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 		csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	} {
 		addCap(t)
 	}
@@ -616,5 +618,21 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 }
 
 func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, nil
+	ctxt := d.InitFunc(ctx, "controller", "ControllerExpandVolume", *req)
+	cr := req.CapacityRange
+	if cr != nil && cr.LimitBytes == 0 {
+		cr.LimitBytes = cr.RequiredBytes
+	}
+	vol, err := d.dc.GetVolume(req.VolumeId, false, false)
+	if err != nil {
+		co.Warningf(ctxt, "VolumeId is invalid: %s", req.VolumeId)
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	if err := vol.Resize(int(cr.RequiredBytes / units.GiB)); err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         cr.RequiredBytes,
+		NodeExpansionRequired: true,
+	}, nil
 }

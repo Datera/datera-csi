@@ -86,7 +86,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 				(*md)["formatted"] = "true"
 			}
 			mountArgs := strings.Split((*md)["m_args"], " ")
-			err = vol.Mount(req.StagingTargetPath, mountArgs)
+			err = vol.Mount(req.StagingTargetPath, mountArgs, fsType)
 			if err != nil {
 				return nil, status.Errorf(codes.Unknown, err.Error())
 			}
@@ -185,7 +185,8 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 	for _, bm := range strings.Split((*md)["bind_mount"], ",") {
 		vol.BindMountPaths.Add(bm)
 	}
-	if err = vol.BindMount(req.TargetPath); err != nil {
+	fsType := (*md)["fs_type"]
+	if err = vol.BindMount(req.TargetPath, fsType); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	(*md)["bind_mount"] = strings.Join(vol.BindMountPaths.List(), ",")
@@ -276,5 +277,21 @@ func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeS
 }
 
 func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	ctxt := d.InitFunc(ctx, "node", "NodeExpandVolume", *req)
+	v, err := d.dc.GetVolume(req.VolumeId, false, false)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, err.Error())
+	}
+	md, err := v.GetMetadata()
+	if err != nil {
+		return nil, status.Errorf(codes.Unknown, err.Error())
+	}
+	if (*md)["fs_type"] == Ext4 {
+		co.Debugf(ctxt, "Extending ext4 filesystem on mount: %s", req.VolumePath)
+		// do ext4 expand
+	} else if (*md)["fs_type"] == Xfs {
+		co.Debugf(ctxt, "Extending xfs filesystem on mount: %s", req.VolumePath)
+		// do xfs expand
+	}
 	return nil, nil
 }

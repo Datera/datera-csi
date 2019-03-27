@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -64,7 +65,7 @@ func format(ctxt context.Context, device, fsType string, fsArgs []string, timeou
 	return nil
 }
 
-func (v *Volume) Mount(dest string, options []string) error {
+func (v *Volume) Mount(dest string, options []string, fs string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Mount")
 	co.Debugf(ctxt, "Mount invoked for %s", v.Name)
 	if v.DevicePath == "" {
@@ -73,7 +74,7 @@ func (v *Volume) Mount(dest string, options []string) error {
 	// } else if v.MountPath != "" {
 	// 	return fmt.Errorf("Mount path already exists for volume %s", v.Name)
 	// }
-	if err := mount(ctxt, v.DevicePath, dest, options); err != nil {
+	if err := mount(ctxt, v.DevicePath, dest, options, fs); err != nil {
 		co.Error(ctxt, err)
 		return err
 	}
@@ -81,7 +82,7 @@ func (v *Volume) Mount(dest string, options []string) error {
 	return nil
 }
 
-func (v *Volume) BindMount(dest string) error {
+func (v *Volume) BindMount(dest, fs string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "BindMount")
 	co.Debugf(ctxt, "BindMount invoked for %s", v.Name)
 	if v.DevicePath == "" {
@@ -89,7 +90,7 @@ func (v *Volume) BindMount(dest string) error {
 	} else if v.MountPath == "" {
 		return fmt.Errorf("Mount path doesn't exist for volume %s, cannot bind-mount an unmounted volume", v.Name)
 	}
-	if err := mount(ctxt, v.MountPath, dest, []string{"--bind"}); err != nil {
+	if err := mount(ctxt, v.MountPath, dest, []string{"--bind"}, fs); err != nil {
 		co.Error(ctxt, err)
 		return err
 	}
@@ -139,6 +140,7 @@ func getMajorMinor(device string) (uint32, uint32, error) {
 	return unix.Major(dev), unix.Minor(dev), nil
 }
 
+// This function is for linking a block device to a new location.  This is for raw block-mode support in kubernetes
 func devLink(ctxt context.Context, device, dest string) error {
 	major, minor, err := getMajorMinor(device)
 	if err != nil {
@@ -152,23 +154,68 @@ func devLink(ctxt context.Context, device, dest string) error {
 	return nil
 }
 
+// func findFs(ctxt context.Context, device string) (string, error) {
+// 	cmd := []string{"blkid", fmt.Sprintf("'%s'", device), "-c", "/dev/null"}
+// 	out, err := co.RunCmd(ctxt, cmd...)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	co.Debugf(ctxt, "Blkid result (no cache): %s", out)
+// 	groups := co.GetCaptureGroups(fsTypeDetect, out)
+// 	if k, ok := groups["fs"]; !ok {
+// 		cmd := []string{"blkid", "-c", "/dev/null"}
+// 		out, err := co.RunCmd(ctxt, cmd...)
+// 		if err != nil {
+// 			return "", err
+// 		}
+// 		co.Debugf(ctxt, "Blkid full output (no cache): %s", out)
+// 		return "", fmt.Errorf("Couldn't find capture group")
+// 	} else {
+// 		return k, nil
+// 	}
+// }
+
+type LsBlk struct {
+	BlockDevices []*LsBlkEntry
+}
+
+type LsBlkEntry struct {
+	Name       string
+	FsType     string
+	Label      string
+	Uuid       string
+	MountPoint string
+}
+
 func findFs(ctxt context.Context, device string) (string, error) {
-	cmd := []string{"blkid", fmt.Sprintf("'%s'", device)}
+	cmd := []string{"lsblk", "-f", device, "--json"}
 	out, err := co.RunCmd(ctxt, cmd...)
 	if err != nil {
 		return "", err
 	}
-	co.Debugf(ctxt, "Blkid result: %s", out)
-	groups := co.GetCaptureGroups(fsTypeDetect, out)
-	if k, ok := groups["fs"]; !ok {
-		return "", fmt.Errorf("Couldn't find capture group")
-	} else {
-		return k, nil
+	co.Debugf(ctxt, "lsblk output: %s", out)
+	data := &LsBlk{}
+	if err := json.Unmarshal([]byte(out), &data); err != nil {
+		return "", err
 	}
+	if len(data.BlockDevices) < 1 {
+		cmd := []string{"lsblk", "-f"}
+		out, err := co.RunCmd(ctxt, cmd...)
+		if err != nil {
+			return "", err
+		}
+		co.Debugf(ctxt, "lsblk full output: %s", out)
+		return "", fmt.Errorf("No block devices returned from lsblk")
+	}
+	fs := data.BlockDevices[0].FsType
+	if fs == "" {
+		return "", fmt.Errorf("No filesystem found")
+	}
+	return fs, nil
 }
 
 func findMnt(ctxt context.Context, device string) (string, error) {
-	cmd := []string{"grep", fmt.Sprintf("'%s'"), "/proc/mounts"}
+	cmd := []string{"grep", fmt.Sprintf("'%s'", device), "/proc/mounts"}
 	out, err := co.RunCmd(ctxt, cmd...)
 	if err != nil {
 		return "", err
@@ -177,51 +224,75 @@ func findMnt(ctxt context.Context, device string) (string, error) {
 	return out, nil
 }
 
-func mount(ctxt context.Context, device, dest string, options []string) error {
-	// Check/create directory
+func isDevice(ctxt context.Context, file string) bool {
+	f, _ := os.Stat(file)
+	if !f.IsDir() && strings.HasPrefix(file, "/dev/") {
+		return true
+	}
+	return false
+}
+
+func readlink(ctxt context.Context, device string) (string, error) {
+	cmd := []string{"readlink", "-f", device}
+	return co.RunCmd(ctxt, cmd...)
+}
+
+func deviceFromMount(ctxt context.Context, file string) (string, error) {
+	cmd := []string{"sh", "-c", fmt.Sprintf(`"grep '%s' /proc/mounts | awk '{print \$1}'"`, file)}
+	out, err := co.RunCmd(ctxt, cmd...)
+	if err != nil {
+		return "", err
+	}
+	dev, err := readlink(ctxt, out)
+	// If readlink fails, we'll assume the device we pulled from /proc/mounts
+	// is correct.  Some versions of readlink won't error out and instead will
+	// return the file/directory that was passed in, in which case we'll just
+	// return that
+	if err != nil {
+		return out, nil
+	}
+	return dev, nil
+}
+
+// Cases:
+// /dev/disk/by-path/some-ip-and-iqn /var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-<uuid>/globalmount
+// /var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-<uuid>/globalmount /var/lib/kubelet/plugins/kubernetes.io/csi/pv/new_mount
+
+func mount(ctxt context.Context, source, dest string, options []string, fs string) error {
+	co.Debugf(ctxt, "mount called. source: %s, dest: %s, options: %s, fs: %s", source, dest, options, fs)
+
+	// Create destination directory if it doesn't exist
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		err = os.MkdirAll(dest, os.ModePerm)
 		if err != nil {
 			return err
 		}
 	}
-	if strings.Contains(device, ":") {
-		cmd := []string{"readlink", "-f", device}
-		out, err := co.RunCmd(ctxt, cmd...)
-		if err != nil {
-			return err
-		}
-		device = out
+	// Get the original device if this is a mount
+	dev, err := deviceFromMount(ctxt, source)
+
+	// If we couldn't resolve, then we're probably working with the device already
+	if err != nil || strings.TrimSpace(dev) == "" {
+		dev = source
 	}
-	if f, err := os.Stat(dest); err != nil && !f.IsDir() && strings.HasPrefix(device, "/dev/") {
-		return devLink(ctxt, device, dest)
+
+	// Check if we're bind-mounting
+	bind := false
+	for _, opt := range options {
+		if opt == "--bind" {
+			bind = true
+		}
+	}
+
+	cmd := []string{}
+	// Mount to directory.  If we're bind-mounting we can't specify filesystem
+	if bind {
+		cmd = append([]string{"mount", dev, dest}, options...)
 	} else {
-		// Sometimes blkid returns no output right after format.
-		// We'll give it a chance before falling back
-		fs, err := func() (string, error) {
-			timeout := 5
-			for {
-				fs, err := findFs(ctxt, device)
-				if fs != "" || timeout <= 0 {
-					return fs, err
-				}
-				time.Sleep(2 * time.Second)
-				timeout--
-			}
-		}()
-		if fs == "" {
-			co.Warning(ctxt, "Couldn't detect filesystem from blkid output")
-			// Mount to directory
-			cmd := append([]string{"mount", device, dest}, options...)
-			_, err = co.RunCmd(ctxt, cmd...)
-			return err
-		}
-		co.Debugf(ctxt, "Detected %s filesystem", fs)
-		// Mount to directory
-		cmd := append([]string{"mount", "-t", fs, device, dest}, options...)
-		_, err = co.RunCmd(ctxt, cmd...)
-		return err
+		cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
 	}
+	_, err = co.RunCmd(ctxt, cmd...)
+	return err
 }
 
 func unmount(ctxt context.Context, path string) error {
