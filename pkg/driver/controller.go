@@ -217,7 +217,11 @@ func registerMdFromCtxt(ctxt context.Context, md *dc.VolMetadata) error {
 }
 
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "CreateVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "CreateVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	// Handle req.Name
 	if req.Name == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Name must be provided (currently empty string)")
@@ -342,7 +346,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "DeleteVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "DeleteVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	vid := req.VolumeId
 	if req.VolumeId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -360,16 +368,29 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 }
 
 func (d *Driver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-	d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
+	_, ip, clean := d.InitFunc(ctx, "controller", "ControllerPublishVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	return nil, status.Errorf(codes.Unimplemented, "ControllerPublishVolume Not Implemented")
 }
 
 func (d *Driver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
-	d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
+	_, ip, clean := d.InitFunc(ctx, "controller", "ControllerUnpublishVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	return nil, status.Errorf(codes.Unimplemented, "ControllerUnPublishVolume Not Implemented")
 }
 
 func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	_, ip, clean := d.InitFunc(ctx, "controller", "ValidateVolumeCapabilities", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	if req.VolumeId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
 	}
@@ -422,7 +443,11 @@ func (d *Driver) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valida
 }
 
 func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "ListVolumes", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "ListVolumes", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	var err error
 	st := int64(0)
 	if req.StartingToken != "" {
@@ -453,7 +478,11 @@ func (d *Driver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (
 }
 
 func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "GetCapacity", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "GetCapacity", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	params, err := parseVolParams(ctxt, req.Parameters)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -473,7 +502,11 @@ func (d *Driver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (
 }
 
 func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	d.InitFunc(ctx, "controller", "ControllerGetCapabilities", *req)
+	_, ip, clean := d.InitFunc(ctx, "controller", "ControllerGetCapabilities", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	resp := &csi.ControllerGetCapabilitiesResponse{Capabilities: []*csi.ControllerServiceCapability{}}
 	addCap := func(t csi.ControllerServiceCapability_RPC_Type) {
 		resp.Capabilities = append(resp.Capabilities, &csi.ControllerServiceCapability{
@@ -499,7 +532,11 @@ func (d *Driver) ControllerGetCapabilities(ctx context.Context, req *csi.Control
 }
 
 func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "CreateSnapshot", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "CreateSnapshot", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	if req.SourceVolumeId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "SourceVolumeId cannot be empty")
 	}
@@ -542,7 +579,11 @@ func (d *Driver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequ
 }
 
 func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "DeleteSnapshot", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "DeleteSnapshot", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	if req.SnapshotId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "SnapshotId is invalid (empty string)")
 	}
@@ -564,7 +605,11 @@ func (d *Driver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequ
 }
 
 func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "ListSnapshots", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "ListSnapshots", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	rsnaps := []*csi.ListSnapshotsResponse_Entry{}
 	var err error
 	st := int64(0)
@@ -618,7 +663,11 @@ func (d *Driver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReques
 }
 
 func (d *Driver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "controller", "ControllerExpandVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "controller", "ControllerExpandVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	cr := req.CapacityRange
 	if cr != nil && cr.LimitBytes == 0 {
 		cr.LimitBytes = cr.RequiredBytes

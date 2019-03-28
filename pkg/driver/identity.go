@@ -42,7 +42,11 @@ func (d *Driver) getManifestData() (map[string]string, error) {
 }
 
 func (d *Driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
-	d.InitFunc(ctx, "identity", "GetPluginInfo", *req)
+	_, ip, clean := d.InitFunc(ctx, "identity", "GetPluginInfo", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	manifest, err := d.getManifestData()
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, err.Error())
@@ -55,7 +59,11 @@ func (d *Driver) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoReques
 }
 
 func (d *Driver) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
-	d.InitFunc(ctx, "identity", "GetPluginCapabilities", *req)
+	_, ip, clean := d.InitFunc(ctx, "identity", "GetPluginCapabilities", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
 			{
@@ -84,7 +92,11 @@ func (d *Driver) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCa
 }
 
 func (d *Driver) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
-	d.InitFunc(ctx, "identity", "Probe", *req)
+	_, ip, clean := d.InitFunc(ctx, "identity", "Probe", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	return &csi.ProbeResponse{
 		Ready: &wrappers.BoolValue{Value: d.healthy},
 	}, nil

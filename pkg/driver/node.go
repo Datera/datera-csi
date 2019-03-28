@@ -16,7 +16,11 @@ import (
 )
 
 func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "node", "NodeStageVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodeStageVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -48,6 +52,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 
+	// This has been moved to volume creation time to satisfy silly requirements
 	// // Setup IpPool
 	// if vol.Template == "" {
 	// 	co.Debugf(ctxt, "Registering IP Pool: %s", (*md)["ip_pool"])
@@ -106,7 +111,11 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 }
 
 func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "node", "NodeUnstageVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodeUnstageVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -159,7 +168,11 @@ func (d *Driver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolu
 }
 
 func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "node", "NodePublishVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodePublishVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -197,7 +210,11 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 }
 
 func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "node", "NodeUnpublishVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodeUnpublishVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	vid := req.VolumeId
 	if vid == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
@@ -227,7 +244,11 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 }
 
 func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
+	_, ip, clean := d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	resp := &csi.NodeGetCapabilitiesResponse{Capabilities: []*csi.NodeServiceCapability{}}
 	addCap := func(t csi.NodeServiceCapability_RPC_Type) {
 		resp.Capabilities = append(resp.Capabilities, &csi.NodeServiceCapability{
@@ -248,7 +269,11 @@ func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabi
 }
 
 func (d *Driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	d.InitFunc(ctx, "node", "NodeGetInfo", *req)
+	_, ip, clean := d.InitFunc(ctx, "node", "NodeGetInfo", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	log.WithField("method", "node_get_info").Infof("Node server %s 'NodeGetInfo' called", d.nid)
 	return &csi.NodeGetInfoResponse{
 		NodeId:             d.nid,
@@ -258,7 +283,11 @@ func (d *Driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (
 }
 
 func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
+	_, ip, clean := d.InitFunc(ctx, "node", "NodeGetVolumeStats", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	v, err := d.dc.GetVolume(req.VolumeId, false, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())
@@ -277,7 +306,11 @@ func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeS
 }
 
 func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	ctxt := d.InitFunc(ctx, "node", "NodeExpandVolume", *req)
+	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodeExpandVolume", *req)
+	defer clean()
+	if ip {
+		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
+	}
 	v, err := d.dc.GetVolume(req.VolumeId, false, false)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, err.Error())

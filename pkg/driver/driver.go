@@ -58,6 +58,7 @@ var (
 	}
 	Version          = "No Version Provided"
 	Githash          = "No Githash Provided"
+	SdkVersion       = "No SdkVersion Provided"
 	SupportedFsTypes = map[string]struct{}{
 		Ext4: struct{}{},
 		Xfs:  struct{}{},
@@ -158,6 +159,7 @@ type Driver struct {
 	healthy       bool
 	vendorVersion string
 	manifest      *dc.Manifest
+	rpcStatus     map[string]struct{}
 
 	sock    string
 	version string
@@ -165,18 +167,19 @@ type Driver struct {
 
 func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 	env := readEnvVars()
-	v := fmt.Sprintf("%s-%s", Version, Githash)
+	v := fmt.Sprintf("datera-csi-%s-%s-gosdk-%s", Version, Githash, SdkVersion)
 	client, err := dc.NewDateraClient(udc, false, v)
 	if err != nil {
 		return nil, err
 	}
 	dc.MetadataDebug = env.MetadataDebug
 	return &Driver{
-		dc:      client,
-		sock:    env.Socket,
-		env:     env,
-		nid:     co.GetHost(),
-		version: Version,
+		dc:        client,
+		sock:      env.Socket,
+		env:       env,
+		nid:       co.GetHost(),
+		version:   Version,
+		rpcStatus: map[string]struct{}{},
 	}, nil
 }
 
@@ -284,7 +287,7 @@ func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
 	return resp, err
 }
 
-func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req interface{}) context.Context {
+func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req interface{}) (context.Context, bool, func()) {
 	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
 	d.dc.WithContext(ctxt)
 	// We're not going to log the identity calls because they're really verbose with the
@@ -293,7 +296,18 @@ func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req inter
 		co.Infof(ctxt, "%s service '%s' called\n", piece, funcName)
 		co.Debugf(ctxt, "%s: %+v\n", funcName, req)
 	}
-	return ctxt
+	key := strings.Join([]string{piece, funcName, fmt.Sprintf("%+v", req)}, "|")
+	inProgress := false
+	cleaner := func() {}
+	if _, ok := d.rpcStatus[key]; ok {
+		inProgress = true
+	} else {
+		d.rpcStatus[key] = struct{}{}
+		cleaner = func() {
+			delete(d.rpcStatus, key)
+		}
+	}
+	return ctxt, inProgress, cleaner
 }
 
 func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.VolumeCapability) error {

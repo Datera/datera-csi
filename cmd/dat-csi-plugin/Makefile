@@ -1,11 +1,14 @@
 VERSION ?= $(shell cat ../../VERSION)
 GITHASH ?= $(shell git describe --match nEvErMatch --always --abbrev=10 --dirty)
+GOSDK_V ?= $(shell go mod graph | grep "github.com/Datera/datera-csi github.com/Datera/go-sdk" | awk -F '@' '{print $$2}')
 NAME=dat-csi-plugin
 
 compile:
 	@echo "==> Building the Datera CSI Driver Version ${VERSION}"
+	@echo "==> datera-csi version ${VERSION}-${GITHASH}"
+	@echo "==> go-sdk version ${GOSDK_V}"
 	@env go get -d ./...
-	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'" github.com/Datera/datera-csi/cmd/dat-csi-plugin
+	@env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.SdkVersion=${GOSDK_V}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'" github.com/Datera/datera-csi/cmd/dat-csi-plugin
 	@env go vet ./...
 
 iscsi-rpc:
@@ -18,8 +21,10 @@ iscsi-rpc:
 
 
 local:
+	@echo "==> datera-csi version ${VERSION}-${GITHASH}"
+	@echo "==> go-sdk version ${GOSDK_V}"
 	@echo "==> Building the Datera CSI Driver Version ${VERSION} For Local System"
-	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'" github.com/Datera/datera-csi/cmd/dat-csi-plugin
+	@env CGO_ENABLED=0 GOARCH=amd64 go build -tags 'osusergo netgo static_build' -o ${NAME} -ldflags "-X 'github.com/Datera/datera-csi/pkg/driver.Version=${VERSION}' -X 'github.com/Datera/datera-csi/pkg/driver.SdkVersion=${GOSDK_V}' -X 'github.com/Datera/datera-csi/pkg/driver.Githash=${GITHASH}'" github.com/Datera/datera-csi/cmd/dat-csi-plugin
 	@env go vet ./...
 
 iscsi-rpc-local:
