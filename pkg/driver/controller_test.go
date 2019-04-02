@@ -5,10 +5,17 @@ import (
 	"fmt"
 	"testing"
 
+	csi "github.com/container-storage-interface/spec/lib/go/csi"
+	units "github.com/docker/go-units"
+
+	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	udc "github.com/Datera/go-udc/pkg/udc"
-	csi "github.com/container-storage-interface/spec/lib/go/csi"
 )
+
+func getCtxt() context.Context {
+	return context.WithValue(context.Background(), co.TraceId, co.GenId())
+}
 
 func getDriverController(t *testing.T) *Driver {
 	conf, err := udc.GetConfig()
@@ -23,7 +30,7 @@ func getDriverController(t *testing.T) *Driver {
 }
 
 func createVolume(t *testing.T, d *Driver) (string, *csi.Volume, func()) {
-	if resp, err := d.CreateVolume(context.Background(), &csi.CreateVolumeRequest{
+	if resp, err := d.CreateVolume(getCtxt(), &csi.CreateVolumeRequest{
 		Name: "csi-controller-test-" + dsdk.RandString(5),
 		CapacityRange: &csi.CapacityRange{
 			RequiredBytes: 10737418240,
@@ -48,7 +55,7 @@ func createVolume(t *testing.T, d *Driver) (string, *csi.Volume, func()) {
 	} else {
 		id := resp.Volume.VolumeId
 		cleanf := func() {
-			if _, err := d.DeleteVolume(context.Background(), &csi.DeleteVolumeRequest{
+			if _, err := d.DeleteVolume(getCtxt(), &csi.DeleteVolumeRequest{
 				VolumeId: id,
 			}); err != nil {
 				t.Fatal(err)
@@ -62,7 +69,7 @@ func createVolume(t *testing.T, d *Driver) (string, *csi.Volume, func()) {
 
 func createVolumeWithSnapshot(t *testing.T, d *Driver) (string, *csi.Volume, *csi.Snapshot, func()) {
 	id, vol, cleanf := createVolume(t, d)
-	if resp, err := d.CreateSnapshot(context.Background(), &csi.CreateSnapshotRequest{
+	if resp, err := d.CreateSnapshot(getCtxt(), &csi.CreateSnapshotRequest{
 		SourceVolumeId: id,
 		Name:           "csi-controller-snapshot-test-" + dsdk.RandString(5),
 	}); err != nil {
@@ -70,7 +77,7 @@ func createVolumeWithSnapshot(t *testing.T, d *Driver) (string, *csi.Volume, *cs
 	} else {
 		snapid := resp.Snapshot.SnapshotId
 		cleanf2 := func() {
-			if _, err := d.DeleteSnapshot(context.Background(), &csi.DeleteSnapshotRequest{
+			if _, err := d.DeleteSnapshot(getCtxt(), &csi.DeleteSnapshotRequest{
 				SnapshotId: snapid,
 			}); err != nil {
 				t.Fatal(err)
@@ -85,7 +92,7 @@ func createVolumeWithSnapshot(t *testing.T, d *Driver) (string, *csi.Volume, *cs
 func TestControllerCreateVolumeDeleteVolume(t *testing.T) {
 	d := getDriverController(t)
 	var id string
-	if resp, err := d.CreateVolume(context.Background(), &csi.CreateVolumeRequest{
+	if resp, err := d.CreateVolume(getCtxt(), &csi.CreateVolumeRequest{
 		Name: "csi-controller-test-" + dsdk.RandString(5),
 		CapacityRange: &csi.CapacityRange{
 			RequiredBytes: 10737418240,
@@ -111,7 +118,7 @@ func TestControllerCreateVolumeDeleteVolume(t *testing.T) {
 		id = resp.Volume.VolumeId
 	}
 
-	if _, err := d.DeleteVolume(context.Background(), &csi.DeleteVolumeRequest{
+	if _, err := d.DeleteVolume(getCtxt(), &csi.DeleteVolumeRequest{
 		VolumeId: id,
 	}); err != nil {
 		t.Fatal(err)
@@ -123,7 +130,7 @@ func TestControllerCreateDeleteSnapshot(t *testing.T) {
 	var snapid string
 	id, _, cleanf := createVolume(t, d)
 	defer cleanf()
-	if resp, err := d.CreateSnapshot(context.Background(), &csi.CreateSnapshotRequest{
+	if resp, err := d.CreateSnapshot(getCtxt(), &csi.CreateSnapshotRequest{
 		SourceVolumeId: id,
 		Name:           "csi-controller-snapshot-test-" + dsdk.RandString(5),
 	}); err != nil {
@@ -132,7 +139,7 @@ func TestControllerCreateDeleteSnapshot(t *testing.T) {
 		snapid = resp.Snapshot.SnapshotId
 	}
 
-	if _, err := d.DeleteSnapshot(context.Background(), &csi.DeleteSnapshotRequest{
+	if _, err := d.DeleteSnapshot(getCtxt(), &csi.DeleteSnapshotRequest{
 		SnapshotId: snapid,
 	}); err != nil {
 		t.Fatal(err)
@@ -144,7 +151,7 @@ func TestControllerCreateVolSnapshotVolumeSource(t *testing.T) {
 	snapid, _, _, cleanf := createVolumeWithSnapshot(t, d)
 	defer cleanf()
 	var volid string
-	if resp, err := d.CreateVolume(context.Background(), &csi.CreateVolumeRequest{
+	if resp, err := d.CreateVolume(getCtxt(), &csi.CreateVolumeRequest{
 		Name: "csi-controller-test-" + dsdk.RandString(5),
 		CapacityRange: &csi.CapacityRange{
 			RequiredBytes: 10737418240,
@@ -177,7 +184,7 @@ func TestControllerCreateVolSnapshotVolumeSource(t *testing.T) {
 		volid = resp.Volume.VolumeId
 	}
 
-	if _, err := d.DeleteVolume(context.Background(), &csi.DeleteVolumeRequest{
+	if _, err := d.DeleteVolume(getCtxt(), &csi.DeleteVolumeRequest{
 		VolumeId: volid,
 	}); err != nil {
 		t.Fatal(err)
@@ -186,7 +193,7 @@ func TestControllerCreateVolSnapshotVolumeSource(t *testing.T) {
 
 func TestControllerGetCapacity(t *testing.T) {
 	d := getDriverController(t)
-	if resp, err := d.GetCapacity(context.Background(), &csi.GetCapacityRequest{}); err != nil {
+	if resp, err := d.GetCapacity(getCtxt(), &csi.GetCapacityRequest{}); err != nil {
 		t.Fatal(err)
 	} else {
 		if resp.AvailableCapacity <= 0 {
@@ -199,13 +206,36 @@ func TestControllerListVolumes(t *testing.T) {
 	d := getDriverController(t)
 	_, _, cleanf := createVolume(t, d)
 	defer cleanf()
-	if resp, err := d.ListVolumes(context.Background(), &csi.ListVolumesRequest{
+	if resp, err := d.ListVolumes(getCtxt(), &csi.ListVolumesRequest{
 		MaxEntries: 1,
 	}); err != nil {
 		t.Fatal(err)
 	} else {
 		if len(resp.Entries) != 1 {
 			t.Fatal(fmt.Errorf("Volumes list did not return expected number of volumes. Expected 1, Found %d", len(resp.Entries)))
+		}
+	}
+}
+
+func TestControllerExpandVolumes(t *testing.T) {
+	d := getDriverController(t)
+	vid, vol, cleanf := createVolume(t, d)
+	defer cleanf()
+	if resp, err := d.ControllerExpandVolume(getCtxt(), &csi.ControllerExpandVolumeRequest{
+		VolumeId: vid,
+		CapacityRange: &csi.CapacityRange{
+			RequiredBytes: vol.CapacityBytes + 1*units.GiB,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	} else {
+		vol, err := d.dc.GetVolume(vid, false, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		vsize := int64(vol.Size * units.GiB)
+		if resp.CapacityBytes != vsize {
+			t.Fatalf("CapacityBytes did not match volume size: [%d != %d]", resp.CapacityBytes, vsize)
 		}
 	}
 }

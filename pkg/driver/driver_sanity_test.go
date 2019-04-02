@@ -31,7 +31,7 @@ func getDriver(t *testing.T) *Driver {
 	return d
 }
 
-func TestDriver(t *testing.T) {
+func TestDriverSanity(t *testing.T) {
 	go func() {
 		d := getDriver(t)
 		if err := d.Run(); err != nil {
