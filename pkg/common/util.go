@@ -37,8 +37,11 @@ func Prettify(v interface{}) string {
 	return string(b)
 }
 
-func WithCtxt(ctxt context.Context, reqName string) context.Context {
-	ctxt = context.WithValue(topctxt, TraceId, GenId())
+func WithCtxt(ctxt context.Context, reqName, traceId string) context.Context {
+	if traceId == "" {
+		traceId = GenId()
+	}
+	ctxt = context.WithValue(topctxt, TraceId, traceId)
 	ctxt = context.WithValue(ctxt, ReqName, reqName)
 	return ctxt
 }

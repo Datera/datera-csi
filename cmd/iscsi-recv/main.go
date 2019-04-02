@@ -34,10 +34,10 @@ var (
 type server struct{}
 
 func (s *server) SendArgs(ctx context.Context, in *pb.SendArgsRequest) (*pb.SendArgsReply, error) {
-	ctx = co.WithCtxt(ctx, "iscsi-recv SendArgs")
-	co.Debugf(ctx, "Recieved message, %#v", in)
+	ctxt := co.WithCtxt(ctx, "iscsi-recv SendArgs", "")
+	co.Debugf(ctxt, "Recieved message, %#v", in)
 	cmd := strings.Split(in.Args, " ")
-	result, err := co.RunCmd(ctx, cmd...)
+	result, err := co.RunCmd(ctxt, cmd...)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
@@ -45,8 +45,8 @@ func (s *server) SendArgs(ctx context.Context, in *pb.SendArgsRequest) (*pb.Send
 }
 
 func (s *server) GetInitiatorName(ctx context.Context, in *pb.GetInitiatorNameRequest) (*pb.GetInitiatorNameReply, error) {
-	ctx = co.WithCtxt(ctx, "iscsi-recv GetInitiatorName")
-	iqn, err := dc.GetClientIqn(ctx)
+	ctxt := co.WithCtxt(ctx, "iscsi-recv GetInitiatorName", "")
+	iqn, err := dc.GetClientIqn(ctxt)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
@@ -56,24 +56,24 @@ func (s *server) GetInitiatorName(ctx context.Context, in *pb.GetInitiatorNameRe
 func main() {
 	cli.Parse(os.Args[1:])
 
-	ctx := co.WithCtxt(context.Background(), "iscsi-recv")
+	ctxt := co.WithCtxt(context.Background(), "iscsi-recv", "")
 	u, err := url.Parse(*addr)
 	if err != nil {
-		co.Fatal(ctx, err)
+		co.Fatal(ctxt, err)
 	}
 	addr := path.Join(u.Host, filepath.FromSlash(u.Path))
 	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
-		co.Fatalf(ctx, "Failed to remove unix domain socket file: %s", addr)
+		co.Fatalf(ctxt, "Failed to remove unix domain socket file: %s", addr)
 	}
 	lis, err := net.Listen("unix", addr)
 	if err != nil {
-		co.Fatalf(ctx, "failed to listen: %v", err)
+		co.Fatalf(ctxt, "failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
 	pb.RegisterIscsiadmServer(s, &server{})
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
-		co.Fatalf(ctx, "failed to serve: %v", err)
+		co.Fatalf(ctxt, "failed to serve: %v", err)
 	}
 }

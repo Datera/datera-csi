@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	grpc "google.golang.org/grpc"
+	gmd "google.golang.org/grpc/metadata"
 
 	dc "github.com/Datera/datera-csi/pkg/client"
 	co "github.com/Datera/datera-csi/pkg/common"
@@ -184,7 +186,7 @@ func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 }
 
 func (d *Driver) Run() error {
-	ctxt := co.WithCtxt(context.Background(), "Run")
+	ctxt := co.WithCtxt(context.Background(), "Run", "")
 	co.Infof(ctxt, "Starting CSI driver\n")
 
 	co.Infof(ctxt, "Parsing socket: %s\n", d.sock)
@@ -218,7 +220,7 @@ func (d *Driver) Run() error {
 		co.Errorf(ctxt, "Error starting listener for address: %s", addr)
 		return err
 	}
-	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServer))
+	d.gs = grpc.NewServer(grpc.UnaryInterceptor(logServerAndSetId))
 	if d.env.Type == ControllerType || d.env.Type == ControllerIdentityType || d.env.Type == AllType {
 		co.Info(ctxt, "Starting 'controller' service\n")
 		csi.RegisterControllerServer(d.gs, d)
@@ -240,13 +242,13 @@ func (d *Driver) Run() error {
 }
 
 func (d *Driver) Stop() {
-	ctxt := co.WithCtxt(context.Background(), "Stop")
+	ctxt := co.WithCtxt(context.Background(), "Stop", "")
 	co.Info(ctxt, "Datera CSI driver stopped")
 	d.gs.Stop()
 }
 
 func (d *Driver) Heartbeater() {
-	ctxt := co.WithCtxt(context.Background(), "Heartbeat")
+	ctxt := co.WithCtxt(context.Background(), "Heartbeat", "")
 	co.Infof(ctxt, "Starting heartbeat service. Interval: %d", d.env.Heartbeat)
 	t := d.env.Heartbeat
 	for {
@@ -263,7 +265,7 @@ func (d *Driver) Heartbeater() {
 }
 
 func (d *Driver) LogPusher() {
-	ctxt := co.WithCtxt(context.Background(), "LogPusher")
+	ctxt := co.WithCtxt(context.Background(), "LogPusher", "")
 	co.Infof(ctxt, "Starting LogPusher service. Interval: %d", d.env.LogPushInterval)
 	t := d.env.LogPushInterval
 	// Give the driver a chance to start before doing first log collect
@@ -276,20 +278,28 @@ func (d *Driver) LogPusher() {
 	}
 }
 
-func logServer(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	ctxt := co.WithCtxt(ctx, "rpc")
-	co.Infof(ctxt, "GRPC -- request: %s -- %+v\n", info.FullMethod, req)
-	resp, err := handler(ctx, req)
-	co.Infof(ctxt, "GRPC -- response: %s -- %+v\n", info.FullMethod, resp)
+func logServerAndSetId(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	id := co.GenId()
+	ctxt := co.WithCtxt(ctx, "rpc", id)
+	ctxt = gmd.AppendToOutgoingContext(ctxt, "datera-request-id", id)
+	co.Infof(ctxt, "GRPC -- request: %s -- %s -- %+v\n", info.FullMethod, id, req)
+	ts1 := time.Now()
+	resp, err := handler(ctxt, req)
+	ts2 := time.Now()
+	td := math.Round(float64(ts2.Sub(ts1) / time.Second))
+	co.Infof(ctxt, "GRPC -- response: %s -- %s %ds -- %+v\n", info.FullMethod, id, td, resp)
 	if err != nil {
-		co.Errorf(ctxt, "GRPC -- error: %s -- %+v\n", info.FullMethod, err)
+		co.Errorf(ctxt, "GRPC -- error: %s -- %s -- %+v\n", info.FullMethod, id, err)
 	}
 	return resp, err
 }
 
 func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req interface{}) (context.Context, bool, func()) {
-	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName))
-	d.dc.WithContext(ctxt)
+	id := ctx.Value(co.TraceId).(string)
+	// Sets trace id in driver
+	ctxt := co.WithCtxt(ctx, fmt.Sprintf("%s.%s", piece, funcName), id)
+	// Sets trace id in client
+	ctxt = d.dc.WithContext(ctxt)
 	// We're not going to log the identity calls because they're really verbose with the
 	// liveness probe sidecar
 	if piece != "identity" {

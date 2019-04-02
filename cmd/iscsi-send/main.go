@@ -59,15 +59,15 @@ func main() {
 	defer conn.Close()
 	c := pb.NewIscsiadmClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	ctx = co.WithCtxt(ctx, "iscsi-send")
+	ctxt, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctxt = co.WithCtxt(ctxt, "iscsi-send", "")
 	defer cancel()
-	setupInitName(ctx, c)
-	r, err := c.SendArgs(ctx, &pb.SendArgsRequest{Args: *args})
+	setupInitName(ctxt, c)
+	r, err := c.SendArgs(ctxt, &pb.SendArgsRequest{Args: *args})
 	// iscsadm exit-status 21 is No Objects Found, which just means the system
 	// is clear of other logins
 	if err != nil && !strings.Contains(err.Error(), "exit status 21") {
-		co.Fatalf(ctx, "Could not send args: %v", err)
+		co.Fatalf(ctxt, "Could not send args: %v", err)
 	}
 	if r != nil {
 		fmt.Println(r.Result)

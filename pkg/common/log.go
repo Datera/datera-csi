@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
@@ -103,15 +102,23 @@ func (f *LogFormatter) Format(entry *log.Entry) ([]byte, error) {
 	msg := entry.Message
 	level := entry.Level
 	t := entry.Time
-	fields, err := json.Marshal(entry.Data)
-	if err != nil {
-		fmt.Printf("Error marshalling fields during logging: %s\n", err)
+	fstring := ""
+	for f, v := range entry.Data {
+		switch v.(type) {
+		case int, int32, int64, uint, uint32, uint64:
+			fstring = strings.Join([]string{fstring, fmt.Sprintf("%s: %d", f, v)}, " ")
+		default:
+			fstring = strings.Join([]string{fstring, fmt.Sprintf("%s: %s", f, v)}, " ")
+		}
 	}
-	return []byte(fmt.Sprintf("%s %s %s %s\n",
+	// if err != nil {
+	// 	fmt.Printf("Error marshalling fields during logging: %s\n", err)
+	// }
+	return []byte(fmt.Sprintf("%s %s %s ||> %s\n",
 		t.Format(time.RFC3339),
 		strings.ToUpper(level.String()),
-		string(msg),
-		fields),
+		string(strings.TrimSpace(msg)),
+		fstring),
 	), nil
 }
 
