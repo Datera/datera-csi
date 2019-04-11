@@ -105,12 +105,9 @@ func (v *Volume) BindMount(dest, fs string) error {
 func (v *Volume) UnBindMount(path string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "UnBindMount")
 	co.Debugf(ctxt, "UnBindMount invoked for %s", v.Name)
-	if v.BindMountPaths == nil || !v.BindMountPaths.Contains(path) {
-		return fmt.Errorf("Volume is already unmounted from bind path: %s", path)
-	}
 	if err := unmount(ctxt, path); err != nil {
-		co.Error(ctxt, err)
-		return err
+		co.Info(ctxt, err)
+		return nil
 	}
 	v.BindMountPaths.Delete(path)
 	return nil
@@ -128,6 +125,19 @@ func (v *Volume) Unmount() error {
 	}
 	v.MountPath = ""
 	return nil
+}
+
+func (v *Volume) ExpandFs(path, fs string, size int64) error {
+	ctxt := context.WithValue(v.ctxt, co.ReqName, "ExpandFs")
+	co.Debugf(ctxt, "ExpandFs invoked for %s", v.Name)
+	device, err := deviceFromMount(ctxt, path)
+	if err != nil {
+		return err
+	}
+	if err := checkDeviceSize(ctxt, device, size); err != nil {
+		return err
+	}
+	return expandFs(ctxt, path, fs)
 }
 
 func getMajorMinor(device string) (uint32, uint32, error) {
@@ -153,27 +163,6 @@ func devLink(ctxt context.Context, device, dest string) error {
 	}
 	return nil
 }
-
-// func findFs(ctxt context.Context, device string) (string, error) {
-// 	cmd := []string{"blkid", fmt.Sprintf("'%s'", device), "-c", "/dev/null"}
-// 	out, err := co.RunCmd(ctxt, cmd...)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	co.Debugf(ctxt, "Blkid result (no cache): %s", out)
-// 	groups := co.GetCaptureGroups(fsTypeDetect, out)
-// 	if k, ok := groups["fs"]; !ok {
-// 		cmd := []string{"blkid", "-c", "/dev/null"}
-// 		out, err := co.RunCmd(ctxt, cmd...)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		co.Debugf(ctxt, "Blkid full output (no cache): %s", out)
-// 		return "", fmt.Errorf("Couldn't find capture group")
-// 	} else {
-// 		return k, nil
-// 	}
-// }
 
 type LsBlk struct {
 	BlockDevices []*LsBlkEntry
@@ -296,18 +285,55 @@ func mount(ctxt context.Context, source, dest string, options []string, fs strin
 }
 
 func unmount(ctxt context.Context, path string) error {
-	var err error
-	if f, err := os.Stat(path); err != nil && f.IsDir() {
-		cmd := []string{"umount", path}
-		_, err := co.RunCmd(ctxt, cmd...)
-		if err != nil {
-			os.RemoveAll(path)
-			return err
-		}
-	}
+	cmd := []string{"umount", path}
+	_, err := co.RunCmd(ctxt, cmd...)
 	if err != nil {
-		os.RemoveAll(path)
-		return err
+		co.Info(ctxt, err)
 	}
 	return os.RemoveAll(path)
+}
+
+func checkDeviceSize(ctxt context.Context, device string, expectedSize int64) error {
+	iscsiCmd := []string{"iscsiadm", "-m", "session", "-R"}
+	blockdevCmd := []string{"blockdev", "--getsize64"}
+	timeout := 60
+	for {
+		_, err := co.RunCmd(ctxt, iscsiCmd...)
+		if err != nil {
+			co.Warningf(ctxt, err.Error())
+		}
+		out, err := co.RunCmd(ctxt, blockdevCmd...)
+		if err != nil {
+			co.Warningf(ctxt, err.Error())
+		}
+		size, err := strconv.ParseInt(out, 10, 0)
+		if err != nil {
+			co.Warningf(ctxt, "Could not parse int: %s", err.Error())
+		}
+		if size == expectedSize {
+			return nil
+		} else {
+			co.Warningf(ctxt, "Blockdevice %s size did not match expected size [%s != %s]", device, size, expectedSize)
+		}
+		timeout--
+		if timeout < 0 {
+			return fmt.Errorf("Blockdevice %s did not resolve to expected size before timeout reached", device)
+		}
+	}
+	return nil
+}
+
+// This is going to always grow the filesystem to the maximum possible size
+func expandFs(ctxt context.Context, path string, fs string) error {
+	cmd := []string{}
+	if fs == co.Ext4 {
+		cmd = []string{"resize2fs", path}
+	} else if fs == co.Xfs {
+		cmd = []string{"xfs_growfs", path}
+	}
+	_, err := co.RunCmd(ctxt, cmd...)
+	if err != nil {
+		return err
+	}
+	return nil
 }

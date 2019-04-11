@@ -37,9 +37,6 @@ const (
 	EnvLogPushInterval  = "DAT_LOGPUSH_INTERVAL"
 	EnvFormatTimeout    = "DAT_FORMAT_TIMEOUT"
 
-	Ext4 = "ext4"
-	Xfs  = "xfs"
-
 	IdentityType = iota + 1
 	ControllerType
 	NodeType
@@ -62,12 +59,12 @@ var (
 	Githash          = "No Githash Provided"
 	SdkVersion       = "No SdkVersion Provided"
 	SupportedFsTypes = map[string]struct{}{
-		Ext4: struct{}{},
-		Xfs:  struct{}{},
+		co.Ext4: struct{}{},
+		co.Xfs:  struct{}{},
 	}
 	DefaultFsArgs = map[string]string{
-		Ext4: "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F",
-		Xfs:  "",
+		co.Ext4: "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F",
+		co.Xfs:  "",
 	}
 )
 

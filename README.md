@@ -114,7 +114,7 @@ Name                   |     Default
 ``total_bandwidth_max``|     ``0``
 ``iops_per_gb``        |     ``0``
 ``bandwidth_per_gb``   |     ``0``
-``fs_type``            |     ``ext4``
+``fs_type``            |     ``ext4`` (Currently the only supported values are 'ext4' and 'xfs')
 ``fs_args``            |     ``-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F``
 ``delete_on_unmount``  |     ``false``
 

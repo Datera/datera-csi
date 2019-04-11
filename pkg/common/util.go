@@ -15,6 +15,11 @@ import (
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 )
 
+const (
+	Ext4 = "ext4"
+	Xfs  = "xfs"
+)
+
 var (
 	execCommand = exec.Command
 	host        = MustS(os.Hostname())

@@ -306,7 +306,7 @@ func (d *Driver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeS
 }
 
 func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodeExpandVolume", *req)
+	_, ip, clean := d.InitFunc(ctx, "node", "NodeExpandVolume", *req)
 	defer clean()
 	if ip {
 		return nil, status.Errorf(codes.Aborted, "Operation is still in progress")
@@ -319,12 +319,13 @@ func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
-	if (*md)["fs_type"] == Ext4 {
-		co.Debugf(ctxt, "Extending ext4 filesystem on mount: %s", req.VolumePath)
-		// do ext4 expand
-	} else if (*md)["fs_type"] == Xfs {
-		co.Debugf(ctxt, "Extending xfs filesystem on mount: %s", req.VolumePath)
-		// do xfs expand
+	cr := req.CapacityRange
+	if cr != nil && cr.LimitBytes == 0 {
+		cr.LimitBytes = cr.RequiredBytes
+	}
+	size := int(cr.RequiredBytes / units.GiB)
+	if err := v.ExpandFs(req.VolumePath, (*md)["fs_type"], int64(size)); err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
 	return nil, nil
 }
