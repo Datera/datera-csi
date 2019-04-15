@@ -284,7 +284,7 @@ func logServerAndSetId(ctx context.Context, req interface{}, info *grpc.UnarySer
 	resp, err := handler(ctxt, req)
 	ts2 := time.Now()
 	td := math.Round(float64(ts2.Sub(ts1) / time.Second))
-	co.Infof(ctxt, "GRPC -- response: %s -- %s %ds -- %+v\n", info.FullMethod, id, td, resp)
+	co.Infof(ctxt, "GRPC -- response: %s -- %s %fs -- %+v\n", info.FullMethod, id, td, resp)
 	if err != nil {
 		co.Errorf(ctxt, "GRPC -- error: %s -- %s -- %+v\n", info.FullMethod, id, err)
 	}
