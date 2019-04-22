@@ -303,6 +303,14 @@ func (d *Driver) InitFunc(ctx context.Context, piece, funcName string, req inter
 		co.Infof(ctxt, "%s service '%s' called\n", piece, funcName)
 		co.Debugf(ctxt, "%s: %+v\n", funcName, req)
 	}
+	// Kubernetes multi-call stupidity rectifier
+	// K8s will often call a long running function many times with the same arguments before the first one completes
+	// This creates a key with the function name and arguments, stores that in a map and only allows execution
+	// if the previous function is complete (and thus removed from the map).  This doesn't actually enforce anything,
+	// just returns a boolean and a cleaner function to clean the map when execution is done.  Enforcement is
+	// performed in the caller
+	//
+	// map[string]struct{} is just a workaround for Golang's lack of a native set datatype
 	key := strings.Join([]string{piece, funcName, fmt.Sprintf("%+v", req)}, "|")
 	inProgress := false
 	cleaner := func() {}
