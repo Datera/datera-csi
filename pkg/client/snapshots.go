@@ -217,12 +217,24 @@ func (r *Volume) CreateSnapshot(name string, snapOpts *SnapOpts) (*Snapshot, err
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateSnapshot")
 	co.Debugf(ctxt, "CreateSnapshot invoked for %s", r.Name)
 	sid := snapIdFromName(ctxt, name)
-	snap, apierr, err := r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Create(&dsdk.SnapshotsCreateRequest{
-		Ctxt:               ctxt,
-		Uuid:               sid.String(),
-		RemoteProviderUuid: snapOpts.RemoteProviderUuid,
-		Type:               snapOpts.Type,
-	})
+	var (
+		snap   *dsdk.Snapshot
+		apierr *dsdk.ApiErrorResponse
+		err    error
+	)
+	if snapOpts.RemoteProviderUuid != "" {
+		snap, apierr, err = r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Create(&dsdk.SnapshotsCreateRequest{
+			Ctxt:               ctxt,
+			Uuid:               sid.String(),
+			RemoteProviderUuid: snapOpts.RemoteProviderUuid,
+			Type:               snapOpts.Type,
+		})
+	} else {
+		snap, apierr, err = r.Ai.StorageInstances[0].Volumes[0].SnapshotsEp.Create(&dsdk.SnapshotsCreateRequest{
+			Ctxt: ctxt,
+			Uuid: sid.String(),
+		})
+	}
 	if apierr != nil {
 		co.Errorf(ctxt, "%s, %s", dsdk.Pretty(apierr), err)
 		// Duplicate found
