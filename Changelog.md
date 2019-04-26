@@ -27,8 +27,8 @@
   * csi-snapshotter:v1.0.1
   * csi-node-driver-registrar:v1.0.1
   * livenessprobe:v1.0.2
-* v1.0.7-dev -- Snapshot Remote provider support, limiting supported filesystems
-                Starting initial implementation of resize.  Development build
+* v1.0.7 -- Snapshot Remote provider support, limiting supported filesystems
+            Starting initial implementation of resize.
   * csi-provisioner:v1.0.1
   * csi-attacher:v1.0.0
   * csi-snapshotter:v1.0.1
