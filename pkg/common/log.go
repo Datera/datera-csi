@@ -82,7 +82,7 @@ func Fatalf(ctxt context.Context, s string, args ...interface{}) {
 // Hack just to make sure I don't miss these
 func checkArgs(ctxt context.Context, s string, args ...interface{}) string {
 	c := 0
-	for _, f := range []string{"%s", "%d", "%v", "%#v", "%t", "%p", "%+v"} {
+	for _, f := range []string{"%s", "%f", "%d", "%v", "%#v", "%t", "%p", "%+v"} {
 		c += strings.Count(s, f)
 	}
 	l := len(args)
