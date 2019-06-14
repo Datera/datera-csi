@@ -3,9 +3,11 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
 	uuid "github.com/google/uuid"
@@ -127,4 +129,34 @@ func GetCaptureGroups(r *regexp.Regexp, matchString string) map[string]string {
 		}
 	}
 	return result
+}
+
+func DatVersionGte(v1, v2 string) (bool, error) {
+	a, err := versionToInt(v1)
+	if err != nil {
+		return false, err
+	}
+	b, err := versionToInt(v2)
+	if err != nil {
+		return false, err
+	}
+	return a >= b, nil
+}
+
+func versionToInt(v string) (int, error) {
+	// Using a factor of 100 per digit so up to 100 versions are supported
+	// per major/minor/patch/subpatch digit in this calculation
+	VersionDigits := 4
+	factor := math.Pow10(VersionDigits * 2)
+	div := math.Pow10(2)
+	result := 0
+	for _, c := range strings.Split(v, ".") {
+		i, err := strconv.ParseInt(c, 10, 0)
+		if err != nil {
+			return 0, err
+		}
+		result += int(i) * int(factor)
+		factor /= div
+	}
+	return result, nil
 }

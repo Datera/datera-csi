@@ -77,7 +77,8 @@ func (r *DateraClient) VendorVersion() (string, error) {
 		co.Error(ctxt, err)
 		return "", co.ErrTranslator(apierr)
 	}
-	return sys.BuildVersion, nil
+	r.vendorVersion = sys.SwVersion
+	return sys.SwVersion, nil
 }
 
 func (r *DateraClient) GetManifest() (*Manifest, error) {
@@ -109,5 +110,6 @@ func (r *DateraClient) GetManifest() (*Manifest, error) {
 		Timezone:           sys.Timezone,
 		Uuid:               sys.Uuid,
 	}
+	r.vendorVersion = mf.SwVersion
 	return mf, nil
 }

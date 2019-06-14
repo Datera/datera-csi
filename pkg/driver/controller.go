@@ -41,6 +41,9 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	if _, ok := params["placement_mode"]; !ok {
 		params["placement_mode"] = "hybrid"
 	}
+	if _, ok := params["placement_policy"]; !ok {
+		params["placement_policy"] = "hybrid"
+	}
 	if _, ok := params["round_robin"]; !ok {
 		params["round_robin"] = "false"
 	}
@@ -73,12 +76,6 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	}
 	if _, ok := params["total_bandwidth_max"]; !ok {
 		params["total_bandwidth_max"] = "0"
-	}
-	if _, ok := params["fs_type"]; !ok {
-		params["fs_type"] = "ext4"
-	}
-	if _, ok := params["fs_args"]; !ok {
-		params["fs_args"] = "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
 	}
 	if _, ok := params["delete_on_unmount"]; !ok {
 		params["delete_on_unmount"] = "false"
@@ -142,21 +139,6 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 		return nil, err
 	}
 	vo.TotalBandwidthMax = int(val)
-	vo.FsType = params["fs_type"]
-	if !isSupportedFs(vo.FsType) {
-		err := fmt.Errorf("Unsupported filesystem type: %s, supported types are %s", vo.FsType, supportedFsTypes())
-		co.Error(ctxt, err)
-		return vo, err
-	}
-	// This restriction is to prevent exceeding 2048 characters in metadata
-	if len(params["fs_args"]) > 200 {
-		return nil, fmt.Errorf("fs_args must be <= 200 characters")
-	}
-	if params["fs_args"] == "" {
-		vo.FsArgs = strings.Split(DefaultFsArgs[vo.FsType], " ")
-	} else {
-		vo.FsArgs = strings.Split(params["fs_args"], " ")
-	}
 	b, err = strconv.ParseBool(params["delete_on_unmount"])
 	if err != nil {
 		return nil, err

@@ -79,24 +79,29 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 
 	case *csi.VolumeCapability_Mount:
 		co.Infof(ctxt, "Handling NodeStageVolume VolumeCapability_Mount")
-		if fs := (*md)["fs_type"]; fs != "" {
-			// Mount Device
-			fsType, fsArgs := fs, strings.Split((*md)["fs_args"], " ")
-			if !vol.Formatted && (*md)["formatted"] != "true" {
-				err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
-				if err != nil {
-					return nil, status.Errorf(codes.Unknown, err.Error())
-				}
-				vol.Formatted = true
-				(*md)["formatted"] = "true"
-			}
-			mountArgs := strings.Split((*md)["m_args"], " ")
-			err = vol.Mount(req.StagingTargetPath, mountArgs, fsType)
+		fsType := (*md)["fs_type"]
+		// Mount Device
+		if fsType == "" {
+			fsType = co.Ext4
+		}
+		fsArgs := strings.Split((*md)["fs_args"], " ")
+		if len(fsArgs) == 0 {
+			fsArgs = DefaultFsArgs[fsType]
+		}
+		if !vol.Formatted && (*md)["formatted"] != "true" {
+			err = vol.Format(fsType, fsArgs, d.env.FormatTimeout)
 			if err != nil {
 				return nil, status.Errorf(codes.Unknown, err.Error())
 			}
-			(*md)["mount_path"] = vol.MountPath
+			vol.Formatted = true
+			(*md)["formatted"] = "true"
 		}
+		mountArgs := strings.Split((*md)["m_args"], " ")
+		err = vol.Mount(req.StagingTargetPath, mountArgs, fsType)
+		if err != nil {
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
+		(*md)["mount_path"] = vol.MountPath
 	case *csi.VolumeCapability_Block:
 		// No formatting is needed since this is raw block
 		co.Infof(ctxt, "Handling NodeStageVolume VolumeCapability_Block")

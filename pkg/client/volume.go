@@ -20,6 +20,7 @@ type VolOpts struct {
 	FsType                  string   `json:"fs_type,omitempty"`
 	FsArgs                  []string `json:"fs_args,omitempty"`
 	PlacementMode           string   `json:"placement,omitempty"`
+	PlacementPolicy         string   `json:"placement_policy,omitempty"`
 	CloneSrc                string   `json:"clone_src,omitempty"`
 	CloneVolSrc             string   `json:"clone_vol_src,omitempty"`
 	CloneSnapSrc            string   `json:"clone_snap_src,omitempty"`
@@ -57,9 +58,10 @@ type Volume struct {
 	Iqn           string
 	Initiators    []string
 
-	Replicas      int
-	PlacementMode string
-	Size          int
+	Replicas        int
+	PlacementMode   string
+	PlacementPolicy string
+	Size            int
 
 	// QoS in map form, mostly for logging
 	QoS map[string]int
@@ -275,11 +277,27 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 		}
 	} else {
 		// Vanilla Volume Create
-		vol := &dsdk.Volume{
-			Name:          "volume-1",
-			Size:          int(volOpts.Size),
-			PlacementMode: volOpts.PlacementMode,
-			ReplicaCount:  int(volOpts.Replica),
+		var vol *dsdk.Volume
+		if yes, err := co.DatVersionGte(r.vendorVersion, "3.3.0.0"); err != nil && yes {
+			vol = &dsdk.Volume{
+				Name:          "volume-1",
+				Size:          int(volOpts.Size),
+				PlacementMode: volOpts.PlacementMode,
+				PlacementPolicy: &dsdk.PlacementPolicy{
+					Path: volOpts.PlacementPolicy,
+				},
+				ReplicaCount: int(volOpts.Replica),
+			}
+		} else if err != nil {
+			co.Errorf(ctxt, "Could not determine vendor version: %s", r.vendorVersion)
+			return nil, err
+		} else {
+			vol = &dsdk.Volume{
+				Name:          "volume-1",
+				Size:          int(volOpts.Size),
+				PlacementMode: volOpts.PlacementMode,
+				ReplicaCount:  int(volOpts.Replica),
+			}
 		}
 		si := &dsdk.StorageInstance{
 			Name: "storage-1",

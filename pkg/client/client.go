@@ -8,9 +8,10 @@ import (
 )
 
 type DateraClient struct {
-	sdk  *dsdk.SDK
-	udc  *udc.UDC
-	ctxt context.Context
+	sdk           *dsdk.SDK
+	udc           *udc.UDC
+	ctxt          context.Context
+	vendorVersion string
 }
 
 func NewDateraClient(udc *udc.UDC, healthcheck bool, driver string) (*DateraClient, error) {

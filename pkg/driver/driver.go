@@ -62,9 +62,9 @@ var (
 		co.Ext4: struct{}{},
 		co.Xfs:  struct{}{},
 	}
-	DefaultFsArgs = map[string]string{
-		co.Ext4: "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F",
-		co.Xfs:  "",
+	DefaultFsArgs = map[string][]string{
+		co.Ext4: strings.Split("-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F", " "),
+		co.Xfs:  []string{},
 	}
 )
 
@@ -349,6 +349,10 @@ func RegisterVolumeCapability(ctxt context.Context, md *dc.VolMetadata, vc *csi.
 	case *csi.VolumeCapability_Mount:
 		at = "mount"
 		fs = vc.GetMount().FsType
+		if fs == "" {
+			co.Debug(ctxt, "No filesystem type specified, defaulting to ext4")
+			fs = co.Ext4
+		}
 		if !isSupportedFs(fs) {
 			err := fmt.Errorf("Unsupported filesystem type: %s, supported types :re %s", fs, supportedFsTypes())
 			co.Error(ctxt, err)
