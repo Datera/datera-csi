@@ -23,10 +23,10 @@ import (
 )
 
 const (
-	driverName = "dsp.csi.daterainc.io"
+	driverNameDefault = "dsp.csi.daterainc.io"
 
 	// Environment Variables
-	EnvSocket           = "DAT_SOCKET"
+	EnvDriverName       = "DAT_DRIVER_NAME"
 	EnvHeartbeat        = "DAT_HEARTBEAT"
 	EnvType             = "DAT_TYPE"
 	EnvVolPerNode       = "DAT_VOL_PER_NODE"
@@ -46,8 +46,7 @@ const (
 )
 
 var (
-	DefaultSocket = fmt.Sprintf("unix:///var/lib/kubelet/plugins/%s/csi.sock", driverName)
-	StrToType     = map[string]int{
+	StrToType = map[string]int{
 		"identity":   IdentityType,
 		"controller": ControllerType,
 		"node":       NodeType,
@@ -69,7 +68,7 @@ var (
 )
 
 type EnvVars struct {
-	Socket           string
+	DriverName       string
 	Type             int
 	VolPerNode       int
 	DisableMultipath bool
@@ -82,6 +81,10 @@ type EnvVars struct {
 }
 
 func readEnvVars() *EnvVars {
+	var name string
+	if name = os.Getenv(EnvDriverName); name == "" {
+		name = driverNameDefault
+	}
 	vpn, err := strconv.ParseInt(os.Getenv(EnvVolPerNode), 0, 0)
 	if err != nil {
 		vpn = int64(256)
@@ -93,10 +96,6 @@ func readEnvVars() *EnvVars {
 	var ro bool
 	if d := os.Getenv(EnvReplicaOverride); d != "" {
 		ro = true
-	}
-	var so string
-	if so = os.Getenv(EnvSocket); so == "" {
-		so = DefaultSocket
 	}
 	hb64, err := strconv.ParseInt(os.Getenv(EnvHeartbeat), 0, 0)
 	if err != nil {
@@ -123,7 +122,7 @@ func readEnvVars() *EnvVars {
 		VolPerNode:       int(vpn),
 		DisableMultipath: dm,
 		ReplicaOverride:  ro,
-		Socket:           so,
+		DriverName:       name,
 		Type:             StrToType[os.Getenv(EnvType)],
 		Heartbeat:        int(hb64),
 		MetadataDebug:    mdd,
@@ -161,6 +160,7 @@ type Driver struct {
 	rpcStatus     map[string]struct{}
 
 	sock    string
+	name    string
 	version string
 }
 
@@ -172,9 +172,11 @@ func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 		return nil, err
 	}
 	dc.MetadataDebug = env.MetadataDebug
+	sock := fmt.Sprintf("unix:///var/lib/kubelet/plugins/%s/csi.sock", env.DriverName)
 	return &Driver{
 		dc:        client,
-		sock:      env.Socket,
+		name:      env.DriverName,
+		sock:      sock,
 		env:       env,
 		nid:       co.GetHost(),
 		version:   Version,
