@@ -149,10 +149,10 @@ spec:
             - "--v=5"
           env:
             - name: DAT_SOCKET
-              value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
+              value: /csi/controller.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/csi/
+              mountPath: /csi/
         - name: csi-attacher
           imagePullPolicy: Always
           image: quay.io/k8scsi/csi-attacher:v1.0.0
@@ -161,11 +161,10 @@ spec:
             - "--v=5"
           env:
             - name: DAT_SOCKET
-              # value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
-              value: /var/lib/csi/dsp.csi.daterainc.io/csi.sock
+              value: /csi/controller.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/csi/
+              mountPath: /csi/
         - name: csi-snapshotter
           imagePullPolicy: Always
           image: quay.io/k8scsi/csi-snapshotter:v1.0.1
@@ -174,22 +173,21 @@ spec:
             - "--v=5"
           env:
             - name: DAT_SOCKET
-              #value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
-              value: /var/lib/csi/dsp.csi.daterainc.io/csi.sock
+              value: /csi/controller.sock
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/csi/
+              mountPath: /csi/
         - name: dat-csi-plugin-controller
           imagePullPolicy: Always
-          image: dateraiodev/dat-csi-plugin:vlatest
+          image: dateraiodev/dat-csi-plugin:latest
           command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
               value: conident
-            - name: DAT_SOCKET
-              value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
+            - name: DAT_DRIVER_NAME
+              value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: 1.1.1.1
+              value: "172.19.1.222"
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
@@ -200,7 +198,7 @@ spec:
               value: "2.2"
           volumeMounts:
             - name: socket-dir
-              mountPath: /var/lib/csi/
+              mountPath: /var/lib/kubelet/plugins/dsp.csi.daterainc.io/
           ports:
           - containerPort: 9808
             name: healthz
@@ -211,17 +209,19 @@ spec:
               path: /healthz
               port: healthz
             initialDelaySeconds: 10
-            timeoutSeconds: 3
-            periodSeconds: 2
+            timeoutSeconds: 5
+            periodSeconds: 10
         - name: liveness-probe
           imagePullPolicy: Always
           volumeMounts:
-          - mountPath: /csi
-            name: socket-dir
-          image: quay.io/k8scsi/livenessprobe:v1.0.2
+          - name: socket-dir
+            mountPath: /csi
+          image: quay.io/k8scsi/livenessprobe:v1.1.0
           args:
-          - --csi-address=/csi/csi.sock
-          - --connection-timeout=3s
+          - --csi-address=$(DAT_SOCKET)
+          env:
+            - name: DAT_SOCKET
+              value: /csi/controller.sock
       volumes:
         - name: socket-dir
           hostPath:
@@ -303,10 +303,9 @@ spec:
                 command: ["/bin/sh", "-c", "rm -rf /registration/dsp.csi.daterainc.io /registration/dsp.csi.daterainc.io-reg.sock"]
           env:
             - name: DAT_SOCKET
-              #value: unix:///var/lib/csi/dsp.csi.daterainc.io/csi.sock
-              value: /csi/csi.sock
+              value: /csi/node.sock
             - name: REG_SOCKET
-              value: /var/lib/kubelet/plugins/dsp.csi.daterainc.io/csi.sock
+              value: /var/lib/kubelet/plugins/dsp.csi.daterainc.io/node.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -323,7 +322,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: dateraiodev/dat-csi-plugin:vlatest
+          image: dateraiodev/dat-csi-plugin:latest
           # The sleep is to allow the iscsid sidecar to start Running iscsiadm
           # -m session initializes /etc/iscsi/initiatorname.iscsi in this
           # container
@@ -331,10 +330,10 @@ spec:
           env:
             - name: DAT_TYPE
               value: nodeident
-            - name: DAT_SOCKET
-              value: unix:///csi/csi.sock
+            - name: DAT_DRIVER_NAME
+              value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: 1.1.1.1
+              value: "172.19.1.222"
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
@@ -363,18 +362,20 @@ spec:
               path: /healthz
               port: healthz
             initialDelaySeconds: 10
-            timeoutSeconds: 3
-            periodSeconds: 2
+            timeoutSeconds: 5
+            periodSeconds: 10
         - name: liveness-probe
           imagePullPolicy: Always
           volumeMounts:
-          - mountPath: /csi
-            name: socket-dir
-          image: quay.io/k8scsi/livenessprobe:v1.0.2
+          - name: socket-dir
+            mountPath: /csi
+          image: quay.io/k8scsi/livenessprobe:v1.1.0
           args:
-          - --csi-address=/csi/csi.sock
-          - --connection-timeout=3s
+          - --csi-address=$(DAT_SOCKET)
           - --health-port=9809
+          env:
+            - name: DAT_SOCKET
+              value: /csi/node.sock
       volumes:
         - name: socket-dir
           hostPath:
@@ -394,4 +395,3 @@ spec:
           hostPath:
             path: /var/lib/kubelet
             type: Directory
-

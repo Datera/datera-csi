@@ -54,6 +54,14 @@ var (
 		"conident":   ControllerIdentityType,
 		"all":        AllType,
 	}
+	TypeToSock = map[int]string{
+		IdentityType:           "identity",
+		ControllerType:         "controller",
+		NodeType:               "node",
+		NodeIdentityType:       "node",
+		ControllerIdentityType: "controller",
+		AllType:                "controller",
+	}
 	Version          = "No Version Provided"
 	Githash          = "No Githash Provided"
 	SdkVersion       = "No SdkVersion Provided"
@@ -172,7 +180,8 @@ func NewDateraDriver(udc *udc.UDC) (*Driver, error) {
 		return nil, err
 	}
 	dc.MetadataDebug = env.MetadataDebug
-	sock := fmt.Sprintf("unix:///var/lib/kubelet/plugins/%s/csi.sock", env.DriverName)
+	t := TypeToSock[env.Type]
+	sock := fmt.Sprintf("unix:///var/lib/kubelet/plugins/%s/%s.sock", env.DriverName, t)
 	return &Driver{
 		dc:        client,
 		name:      env.DriverName,
