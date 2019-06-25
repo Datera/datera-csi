@@ -53,6 +53,7 @@ function collect_pod_logs()
         fi
         echo "[INFO] Saving container logfile: ${c}"
         ${KUBECTL} logs --namespace kube-system ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}.txt
+        ${KUBECTL} logs --namespace kube-system --previous=true ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}-previous.txt
     done
 }
 
