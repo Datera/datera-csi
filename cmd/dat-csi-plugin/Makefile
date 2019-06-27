@@ -1,3 +1,8 @@
+# This Makefile MUST be run inside the datera-csi/cmd/dat-csi-plugin folder
+# Using any other folder will break relative references.  The Dockerfile
+# MUST also be located in this folder since Docker does not like building
+# images with the Dockerfile in a separate location.
+
 VERSION ?= $(shell cat ../../VERSION)
 GITHASH ?= $(shell git describe --match nEvErMatch --always --abbrev=10 --dirty)
 GOSDK_V ?= $(shell go mod graph | grep "github.com/Datera/datera-csi github.com/Datera/go-sdk" | awk -F '@' '{print $$2}')
