@@ -1,0 +1,29 @@
+What Is A Good Test
+===================
+
+This is just a basic description of the attributes that make up a good test
+(unit, integration or otherwise).  Sticking to these principles will make
+maintaining the tests easier down the line and improve debugging speed of the
+app.
+
+Good Tests
+==========
+1. Start from a consistent blank slate
+2. Have a consistent setup/teardown (ideally using the driver methods in question for both)
+3. Test exactly one piece of one resource each
+4. Do not rely on the state of previous tests
+5. Inspect for leaked artifacts after tests (iscsi sessions, file descriptors, mountpoints, etc)
+6. Are reliable
+7. Run quickly
+8. Can be run concurrently with other tests
+9. Report errors immediately when they happen.
+    * We should support both cleaning up leaked resources from failed tests
+    * Also immediately stopping a test run on failure to leave the machine in the error state
+
+
+Necessary Tests
+===============
+1. Setup test for each resource
+2. Teardown test for each resource (including checking for leaked artifacts)
+3. Modification of each part of the resource as a separate test
+4. Full workflow tests but ONLY AFTER each resource piece test is written
