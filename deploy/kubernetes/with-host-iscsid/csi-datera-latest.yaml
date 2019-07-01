@@ -47,17 +47,20 @@ parameters:
 
 ###### Controller ######
 ---
-apiVersion: v1
 kind: ServiceAccount
+apiVersion: v1
 metadata:
-  name: csi-provisioner
+  name: csi-datera-controller-sa
   namespace: kube-system
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-provisioner
+  name: csi-datera-provisioner-role
 rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["persistentvolumes"]
     verbs: ["get", "list", "watch", "create", "delete"]
@@ -67,12 +70,84 @@ rules:
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
   - apiGroups: [""]
-    resources: ["endpoints"]
-    verbs: ["list", "watch", "create", "update", "delete", "get"]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-datera-provisioner-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-datera-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-datera-provisioner-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Attacher must be able to work with PVs, nodes and VolumeAttachments
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-datera-attacher-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-datera-attacher-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-datera-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-datera-attacher-role
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-datera-snapshotter-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
@@ -88,38 +163,19 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["create", "list", "watch", "delete"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-provisioner
-  namespace: kube-system
+  name: csi-datera-snapshotter-binding
 subjects:
   - kind: ServiceAccount
-    name: csi-provisioner
+    name: csi-datera-controller-sa
     namespace: kube-system
 roleRef:
   kind: ClusterRole
-  name: csi-provisioner
+  name: csi-datera-snapshotter-role
   apiGroup: rbac.authorization.k8s.io
----
-# needed for StatefulSet
-kind: Service
-apiVersion: v1
-metadata:
-  name: csi-provisioner
-  namespace: kube-system
-  labels:
-    app: csi-provisioner
-spec:
-  selector:
-    app: csi-provisioner
-  ports:
-    - name: dummy
-      port: 12345
 ---
 kind: StatefulSet
 apiVersion: apps/v1
@@ -137,7 +193,7 @@ spec:
       labels:
         app: csi-provisioner
     spec:
-      serviceAccount: csi-provisioner
+      serviceAccount: csi-datera-controller-sa
       hostNetwork: true
       containers:
         - name: csi-provisioner
@@ -187,7 +243,7 @@ spec:
             - name: DAT_DRIVER_NAME
               value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: "172.19.1.222"
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
@@ -233,45 +289,31 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-node
+  name: csi-datera-node-sa
   namespace: kube-system
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-node
+  name: csi-datera-node-driver-registrar-role
   namespace: kube-system
 rules:
   - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "update"]
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["get", "list"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update"]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-node
-  namespace: kube-system
+  name: csi-datera-node-driver-registrar-binding
 subjects:
   - kind: ServiceAccount
-    name: csi-node
+    name: csi-datera-node-sa
     namespace: kube-system
 roleRef:
   kind: ClusterRole
-  name: csi-node
+  name: csi-datera-node-driver-registrar-role
   apiGroup: rbac.authorization.k8s.io
-
 ---
 kind: DaemonSet
 apiVersion: apps/v1
@@ -287,7 +329,7 @@ spec:
       labels:
         app: csi-node
     spec:
-      serviceAccount: csi-node
+      serviceAccount: csi-datera-node-sa
       hostNetwork: true
       containers:
         - name: node-driver-registrar
@@ -333,7 +375,7 @@ spec:
             - name: DAT_DRIVER_NAME
               value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: "172.19.1.222"
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
