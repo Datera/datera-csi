@@ -4,6 +4,7 @@ KUBECTL="kubectl"
 POD_REGEX="csi-(provisioner|node)-"
 RSYNC="rsync://rts7.daterainc.com:/dumps/"
 USERNAME="root"
+NAMESPACE="kube-system"
 
 function genstr()
 {
@@ -72,7 +73,7 @@ function collect_logs()
     # iscsi-recv logs
     journalctl -u iscsi-recv.service > ${SAVE_DIR}/$(hostname)/iscsi-recv
     # Find relevant pods
-    local pods=$(${KUBECTL} get pods --namespace kube-system | grep -E "${POD_REGEX}" | awk '{print $1}')
+    local pods=$(${KUBECTL} get pods --namespace "${NAMESPACE}" | grep -E "${POD_REGEX}" | awk '{print $1}')
     # Collect pod logs
     for pod in ${pods}
     do
@@ -150,6 +151,7 @@ Usage: $0 [-k KUBECTL -p POD_REGEX -hs]
 -p POD_REGEX Regex (optional, grep -E compatible) to match pods for log collection
 -n USERNAME Username for kubernetes nodes (default: root)
 -l PASSWORD Password for kubernetes nodes (optional unless collecting system logs)
+-w NAMESPACE The namespace under which the pods exist (used for multitenant cases)
 -b HOST_IPS Comma delimited list of ip addresses (optional, provide if log
             collect can't determine them from kubectl describe nodes)
 -r Remove known_hosts file (backed up to known_hosts.old.  Use this if ssh into
@@ -158,7 +160,7 @@ Usage: $0 [-k KUBECTL -p POD_REGEX -hs]
 }
 
 OPT_S=false
-while getopts ":hsurik:p:n:l:" option
+while getopts ":hsurik:p:n:l:w:" option
 do
     case "${option}"
     in
@@ -173,6 +175,8 @@ do
         n) USERNAME=${OPTARG}
           ;;
         l) PASSWORD=${OPTARG}
+          ;;
+        w) NAMESPACE=${OPTARG}
           ;;
         b) HOST_IPS=$(echo "${OPTARG}" | sed 's/,/ /g')
           ;;
