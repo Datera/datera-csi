@@ -1,0 +1,12 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: csi-sc-ext4-with-args
+  namespace: kube-system
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: dsp.csi.daterainc.io
+parameters:
+  replica_count: "1"
+  csi.storage.k8s.io/fstype: ext4
+  fs_args: "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
