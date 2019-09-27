@@ -323,3 +323,11 @@ WITH CAUTION.
 * DAT\_DISABLE\_LOGPUSH     -- Disables pushing plugin logs to the Datera system
 * DAT\_LOGPUSH\_INTERVAL    -- Sets interval between logpushes to the Datera system
 * DAT\_FORMAT\_TIMEOUT      -- Sets the timeout duration for volume format calls (default 60 seconds)
+
+## Note on K8S setup through Rancher
+
+In Rancher setup, the kubelet is run inside a container and hence may not have access to the socket /var/datera/csi-iscsi.sock on the host. Run '# nc -U /var/datera/csi-iscsi.sock' from inside the kubelet container and verify whether the socket is listening. If not, a bind mount would be needed as specified here: https://docs.docker.com/storage/bind-mounts/
+
+```bash
+  --mount type=bind,source="/var/datera/csi-iscsi.sock"/target,target=/var/datera/csi-iscsi.sock
+```
