@@ -267,6 +267,7 @@ func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabi
 	for _, t := range []csi.NodeServiceCapability_RPC_Type{
 		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+                csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
 	} {
 		addCap(t)
 	}
