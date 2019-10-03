@@ -1,0 +1,62 @@
+Datera Storage offers predefined templates for creating volumes which can be referenced and/or overridden. 
+Following is an example of overriding the "basic_small" template available by default on Datera storage.
+
+(1) Create a StorageClass referencing the template name and the necessary override parameters 
+    (#kubectl create -f csi-sc-small-template-override.yaml).
+
+    kind: StorageClass
+    apiVersion: storage.k8s.io/v1
+    metadata:
+      name: small-template-override
+      namespace: kube-system
+      annotations:
+        storageclass.kubernetes.io/is-default-class: "true"
+    provisioner: dsp.csi.daterainc.io
+    parameters:
+      replica_count: "1"
+      placement_mode: "hybrid"
+      round_robin: "false"
+      ip_pool: "default"
+      template: "basic_small"
+      disable_template_override: "false"
+      fs_type: "ext4"
+      fs_args: "-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F"
+      delete_on_unmount: "false"
+
+
+(2) Create a PVC referencing the StorageClass above (#kubectl create -f csi-pvc-small-template-override.yaml)
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: csi-pvc-small-template-override
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+      storageClassName: small-template-override
+
+
+(3) Create a Pod with the PVC claim (#kubectl create -f csi-app-small-template-override.yaml)
+
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: my-csi-app-small-template-override
+    spec:
+      containers:
+        - name: my-app-image
+          image: alpine
+          volumeMounts:
+          - mountPath: "/data"
+            name: my-app-volume
+          command: [ "sleep", "1000000" ]
+      volumes:
+        - name: my-app-volume
+          persistentVolumeClaim:
+            claimName: csi-pvc-small-template-override
+
+
+  
