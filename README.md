@@ -331,3 +331,11 @@ In Rancher setup, the kubelet is run inside a container and hence may not have a
 ```bash
   --mount type=bind,source="/var/datera/csi-iscsi.sock"/target,target=/var/datera/csi-iscsi.sock
 ```
+## Driver upgrades and downgrades
+
+Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example:
+
+```bash
+# kubectl delete -f csi-datera-1.0.7.yaml
+# kubectl create -f csi-datera.1.0.6.yaml
+```
