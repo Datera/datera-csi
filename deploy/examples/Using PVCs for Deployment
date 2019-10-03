@@ -1,0 +1,55 @@
+(1) Create PVC for deployment (# kubectl create -f csi-pvc-deployment.yaml):
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: csi-pvc-deployment
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi
+      storageClassName: dat-block-storage
+
+(2) Create a deployment (#kubectl create -f csi-app-deployment.yaml):
+
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: csi-app-deployment
+      labels:
+        app: datera
+        purpose: automation
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: datera
+      template:
+        metadata:
+          labels:
+            app: datera
+        spec:
+          hostNetwork: true
+          containers:
+          - name: csi-app-container
+            image: alpine
+            resources:
+              limits:
+                cpu: "1"
+                memory: "1Gi"
+              requests:
+                cpu: "1"
+                memory: "1Gi"
+            securityContext:
+              privileged: true
+            command: [ "/bin/sh", "-c", "--" ]
+            args: [ "while true; do sleep 300; done;" ]
+            volumeMounts:
+            - mountPath: "/data"
+              name: csi-pvc-deployment
+          volumes:
+          - name: csi-pvc-deployment
+            persistentVolumeClaim:
+              claimName: csi-pvc-deployment
