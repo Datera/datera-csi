@@ -333,9 +333,9 @@ In Rancher setup, the kubelet is run inside a container and hence may not have a
 ```
 ## Driver upgrades and downgrades
 
-Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example:
+Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.7 to v1.0.6 can be done as follows:
 
 ```bash
 # kubectl delete -f csi-datera-1.0.7.yaml
-# kubectl create -f csi-datera.1.0.6.yaml
+# kubectl create -f csi-datera-1.0.6.yaml
 ```
