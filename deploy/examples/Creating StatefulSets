@@ -1,0 +1,36 @@
+#kubectl create -f csi-app-statefulset.yaml  (this creates 2 replicas)
+
+    kind: StatefulSet
+    apiVersion: apps/v1
+    metadata:
+      name: csi-app-statefulset
+      namespace: default
+    spec:
+      selector:
+        matchLabels:
+          app: csi-app-statefulset
+      serviceName: "csi-app-ss"
+      replicas: 2
+      template:
+        metadata:
+          labels:
+            app: csi-app-statefulset
+        spec:
+          hostNetwork: true
+          containers:
+            - name: statefulset-pod
+              imagePullPolicy: Always
+              image: alpine
+              volumeMounts:
+                - mountPath: "/data"
+                  name: ss
+              command: [ "sleep", "1000000" ]
+      volumeClaimTemplates:
+      - metadata:
+          name: ss
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          storageClassName: "dat-block-storage"
+          resources:
+            requests:
+              storage: 1Gi
