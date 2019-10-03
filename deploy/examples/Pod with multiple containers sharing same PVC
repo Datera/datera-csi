@@ -1,0 +1,90 @@
+(1) Create the PVC that will be claimed by the Pod (#kubectl create -f csi-pvc-pod-multiple-containers.yaml)
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: csi-pvc-200
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi
+      storageClassName: dat-block-storage
+ 
+(2) Create the Pod with multiple containers (#kubectl create -f csi-app-pod-multiple-containers.yaml)
+
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: csi-app-multiple-containers
+      namespace: default
+      labels:
+        purpose: automation
+    spec:
+      hostNetwork: true
+      volumes:
+        - name: csi-pv-200
+          persistentVolumeClaim:
+            claimName: csi-pvc-200
+      containers:
+        - name: csi-app-container1
+          image: alpine
+          securityContext:
+            privileged: true
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          ports:
+            - containerPort: 8091
+              name: "http-server"
+          volumeMounts:
+            - mountPath: "/data"
+              name: csi-pv-200
+        - name: csi-app-container2
+          image: alpine
+          securityContext:
+            privileged: true
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          ports:
+            - containerPort: 8092
+              name: "http-server"
+          volumeMounts:
+            - mountPath: "/data"
+              name: csi-pv-200
+        - name: csi-app-container3
+          image: alpine 
+          securityContext:
+            privileged: true
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          ports:
+            - containerPort: 8093
+              name: "http-server"
+          volumeMounts:
+            - mountPath: "/data"
+              name: csi-pv-200
+        - name: csi-app-container4
+          image: alpine
+          securityContext:
+            privileged: true
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          ports:
+            - containerPort: 8094
+              name: "http-server"
+          volumeMounts:
+            - mountPath: "/data"
+              name: csi-pv-200
+        - name: csi-app-container5
+          image: alpine
+          securityContext:
+            privileged: true
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "while true; do sleep 30; done;" ]
+          ports:
+            - containerPort: 8095
+              name: "http-server"
+          volumeMounts:
+            - mountPath: "/data"
+              name: csi-pv-200
