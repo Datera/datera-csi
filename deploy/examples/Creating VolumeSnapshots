@@ -1,0 +1,76 @@
+(1) Create the Volume whose Snapshot needs to be taken (#kubectl create -f csi-pvc.yaml)
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: csi-pvc
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: dat-block-storage
+
+
+(2) Create a VolumeSnapshotClass (#kubectl create -f csi-snapshot-class.yaml):
+
+    apiVersion: snapshot.storage.k8s.io/v1alpha1
+    kind: VolumeSnapshotClass
+    metadata:
+      name: csi-snap-class
+    snapshotter: dsp.csi.daterainc.io
+    parameters:
+    
+    
+(3) Create the VolumeSnapshot (#kubectl create -f csi-snapshot.yaml)
+
+    kind: VolumeSnapshot
+    metadata:
+      name: csi-snap
+    spec:
+      snapshotClassName: csi-snap-class
+      source:
+        name: csi-pvc
+        kind: PersistentVolumeClaim
+
+
+(4) Create a new volume from the VolumeSnapshot taken (#kubectl create -f csi-pvc-from-snapshot.yaml)
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: csi-pvc-restore
+      namespace: default
+    spec:
+      storageClassName: dat-block-storage
+      dataSource:
+        name: csi-snap
+        kind: VolumeSnapshot
+        apiGroup: snapshot.storage.k8s.io
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+
+(5) You can create a Pod claiming the new volume created from the VolumeSnapshot (#kubectl create -f csi-app-from-snapshot.yaml)
+
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: my-csi-app-restore
+    spec:
+      containers:
+        - name: my-app-image
+          image: alpine
+          volumeMounts:
+          - mountPath: "/data"
+            name: my-app-volume
+          command: [ "sleep", "1000000" ]
+      volumes:
+        - name: my-app-volume
+          persistentVolumeClaim:
+            claimName: csi-pvc-restore
+
+        
