@@ -298,21 +298,6 @@ func mount(ctxt context.Context, source, dest string, options []string, fs strin
                 cmd = append([]string{"mount", dev, dest}, options...)
         }
 
-	// Check if we're bind-mounting
-	//bind := false
-	//for _, opt := range options {
-	//	if opt == "--bind" {
-	//		bind = true
-	//	}
-	//}
-
-	//cmd := []string{}
-	// Mount to directory.  If we're bind-mounting we can't specify filesystem
-	//if bind {
-	//	cmd = append([]string{"mount", dev, dest}, options...)
-	//} else {
-	//	cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
-	//}
 	_, err = co.RunCmd(ctxt, cmd...)
 	return err
 }
@@ -340,9 +325,7 @@ func checkDeviceSize(ctxt context.Context, device string, expectedSize int64) er
 			co.Warningf(ctxt, err.Error())
 		}
                 out = strings.TrimSuffix(out, "\n")
-                //co.Debugf(ctxt, "block device size = %d", strconv.Atoi(out))
                 expectedSize = int64(expectedSize * units.GiB)
-                co.Debugf(ctxt, "expectedSize = %d", expectedSize)
 		size, err := strconv.ParseInt(out, 10, 0)
 		if err != nil {
 			co.Warningf(ctxt, "Could not parse int: %s", err.Error())
