@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+        units "github.com/docker/go-units"
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	unix "golang.org/x/sys/unix"
@@ -131,10 +132,11 @@ func (v *Volume) ExpandFs(path, fs string, size int64) error {
 	if err != nil {
 		return err
 	}
+        co.Debugf(ctxt, "Expand to size requested = %d", size * units.GiB)
 	if err := checkDeviceSize(ctxt, device, size); err != nil {
 		return err
 	}
-	return expandFs(ctxt, path, fs)
+        return expandFs(ctxt, device, fs)
 }
 
 func getMajorMinor(device string) (uint32, uint32, error) {
@@ -224,18 +226,28 @@ func readlink(ctxt context.Context, device string) (string, error) {
 }
 
 func deviceFromMount(ctxt context.Context, file string) (string, error) {
-	cmd := []string{"sh", "-c", fmt.Sprintf(`"grep '%s' /proc/mounts | awk '{print \$1}'"`, file)}
-	out, err := co.RunCmd(ctxt, cmd...)
-	if err != nil {
-		return "", err
-	}
-	dev, err := readlink(ctxt, out)
+
+        // Multiple Unix pipes does not work well in Golang
+        // Breaking into 2 distinct commands
+        cmd1 :=  []string{"sh", "-c", fmt.Sprintf("grep '%s' /proc/mounts", file)}
+        out1, err1 := co.RunCmd(ctxt, cmd1...)
+
+        cmd2 :=  []string{"sh", "-c", fmt.Sprintf("echo '%s' | awk '{print $1}'", out1)}
+        out2, err2 := co.RunCmd(ctxt, cmd2...)
+
+        if err1 != nil {
+	       return "", err1
+        }
+        if err2 != nil {
+               return "", err2
+        }
+	dev, err := readlink(ctxt, out2)
 	// If readlink fails, we'll assume the device we pulled from /proc/mounts
 	// is correct.  Some versions of readlink won't error out and instead will
 	// return the file/directory that was passed in, in which case we'll just
 	// return that
 	if err != nil {
-		return out, nil
+		return out2, nil
 	}
 	return dev, nil
 }
@@ -258,25 +270,49 @@ func mount(ctxt context.Context, source, dest string, options []string, fs strin
 	dev, err := deviceFromMount(ctxt, source)
 
 	// If we couldn't resolve, then we're probably working with the device already
+        cmd := []string{}
+        bind := false
+
 	if err != nil || strings.TrimSpace(dev) == "" {
 		dev = source
-	}
+	        for _, opt := range options {
+                        if opt == "--bind" {
+                                bind = true
+	                }
+                }
+                if bind {
+                        cmd = append([]string{"mount", dev, dest}, options...)
+                } else {
+                        cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
+                }
+	} else {
+                // Remove the --bind option from options array
+                for idx, opt := range options {
+                        if opt == "--bind" {
+                                copy(options[idx:], options[idx+1:])
+                                options[len(options)-1] = ""
+                                options = options[:len(options)-1]
+                                break
+                        }
+                }
+                cmd = append([]string{"mount", dev, dest}, options...)
+        }
 
 	// Check if we're bind-mounting
-	bind := false
-	for _, opt := range options {
-		if opt == "--bind" {
-			bind = true
-		}
-	}
+	//bind := false
+	//for _, opt := range options {
+	//	if opt == "--bind" {
+	//		bind = true
+	//	}
+	//}
 
-	cmd := []string{}
+	//cmd := []string{}
 	// Mount to directory.  If we're bind-mounting we can't specify filesystem
-	if bind {
-		cmd = append([]string{"mount", dev, dest}, options...)
-	} else {
-		cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
-	}
+	//if bind {
+	//	cmd = append([]string{"mount", dev, dest}, options...)
+	//} else {
+	//	cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
+	//}
 	_, err = co.RunCmd(ctxt, cmd...)
 	return err
 }
@@ -292,7 +328,7 @@ func unmount(ctxt context.Context, path string) error {
 
 func checkDeviceSize(ctxt context.Context, device string, expectedSize int64) error {
 	iscsiCmd := []string{"iscsiadm", "-m", "session", "-R"}
-	blockdevCmd := []string{"blockdev", "--getsize64"}
+	blockdevCmd := []string{"blockdev", "--getsize64", device}
 	timeout := 60
 	for {
 		_, err := co.RunCmd(ctxt, iscsiCmd...)
@@ -303,6 +339,10 @@ func checkDeviceSize(ctxt context.Context, device string, expectedSize int64) er
 		if err != nil {
 			co.Warningf(ctxt, err.Error())
 		}
+                out = strings.TrimSuffix(out, "\n")
+                //co.Debugf(ctxt, "block device size = %d", strconv.Atoi(out))
+                expectedSize = int64(expectedSize * units.GiB)
+                co.Debugf(ctxt, "expectedSize = %d", expectedSize)
 		size, err := strconv.ParseInt(out, 10, 0)
 		if err != nil {
 			co.Warningf(ctxt, "Could not parse int: %s", err.Error())

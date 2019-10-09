@@ -333,5 +333,8 @@ func (d *Driver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolume
 	if err := v.ExpandFs(req.VolumePath, (*md)["fs_type"], int64(size)); err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, err.Error())
 	}
-	return nil, nil
+        resp := &csi.NodeExpandVolumeResponse{
+		CapacityBytes: req.GetCapacityRange().RequiredBytes,
+	}
+	return resp, nil
 }
