@@ -1,0 +1,185 @@
+
+(1) Create a cluster rolebinding for service account:
+
+[root@tlx16cp tmp]# kubectl create clusterrolebinding csi-admin --clusterrole=cluster-admin --serviceaccount=kube-system:csi-datera-controller-sa
+clusterrolebinding.rbac.authorization.k8s.io/csi-admin created
+[root@tlx16cp tmp]# 
+
+
+(2) Edit the kube-apiserver manifest and update the feature-gate as shown below:
+
+[root@tlx16cp tmp]# vi /etc/kubernetes/manifests/kube-apiserver.yaml
+
+    - --feature-gates=VolumeSnapshotDataSource=true,ExpandCSIVolumes=true,ExpandInUsePersistentVolumes=true
+
+[root@tlx16cp tmp]#
+[root@tlx16cp tmp]# ps -ef | grep kube-apiserver
+root     26330 26311  5 04:46 ?        00:06:48 kube-apiserver --advertise-address=172.19.1.80 --allow-privileged=true --authorization-mode=Node,RBAC --client-ca-file=/etc/kubernetes/pki/ca.crt --enable-admission-plugins=NodeRestriction --enable-bootstrap-token-auth=true --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key --etcd-servers=https://127.0.0.1:2379 --feature-gates=VolumeSnapshotDataSource=true,ExpandCSIVolumes=true,ExpandInUsePersistentVolumes=true --insecure-port=0 --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key --requestheader-allowed-names=front-proxy-client --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt --requestheader-extra-headers-prefix=X-Remote-Extra- --requestheader-group-headers=X-Remote-Group --requestheader-username-headers=X-Remote-User --secure-port=6443 --service-account-key-file=/etc/kubernetes/pki/sa.pub --service-cluster-ip-range=10.96.0.0/12 --tls-cert-file=/etc/kubernetes/pki/apiserver.crt --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+
+[root@tlx16cp tmp]# 
+
+
+(3) Ensure the Datera CSI driver yaml from under /datera-csi/deploy/kubernetes/release/1.0/csi-datera-x.x.x is atleast version 1.0.8 or higher.
+
+
+(4) Change the accessMode of the PVC to RWX
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: dat-block-storage
+
+
+(5) Add and set the allowVolumeExpansion key to 'true' in StorageClass definition
+
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: dat-block-storage
+  namespace: kube-system
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: dsp.csi.daterainc.io
+parameters:
+  replica_count: "1"
+allowVolumeExpansion: true
+
+
+(6) Create a PVC using the StorageClass created above
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-pvc-deployment
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  storageClassName: dat-block-storage
+
+
+(7) Create a Pod deployment as shown in example below
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csi-app-deployment
+  labels:
+    app: datera
+    purpose: automation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datera
+  template:
+    metadata:
+      labels:
+        app: datera
+    spec:
+      hostNetwork: true
+      containers:
+      - name: csi-app-container
+        image: alpine
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+        securityContext:
+          privileged: true
+        command: [ "/bin/sh", "-c", "--" ]
+        args: [ "while true; do sleep 300; done;" ]
+        volumeMounts:
+        - mountPath: "/data"
+          name: csi-pvc-deployment
+      volumes:
+      - name: csi-pvc-deployment
+        persistentVolumeClaim:
+          claimName: csi-pvc-deployment
+
+
+(8) Check the volume size as shown under "kubectl get pvc", "kubectl get pv" and "kubectl exec -it <pod_name> -n <namespace> -- df -h" aare as expected.
+
+[root@master]# kubectl get pvc
+NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS        AGE
+csi-pvc-deployment   Bound    pvc-5e9e5e98-3692-4958-89f4-b39606193802   200Gi      RWX            dat-block-storage   5m10s
+[root@master]# 
+[root@master]# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS        REASON   AGE
+pvc-5e9e5e98-3692-4958-89f4-b39606193802   200Gi      RWX            Delete           Bound    default/csi-pvc-deployment   dat-block-storage            4m41s
+[root@master]# 
+[root@master]# kubectl get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+csi-app-deployment-9484fb499-7fxx6   1/1     Running   0          36s
+[root@master]# 
+[root@master]# kubectl exec -it csi-app-deployment-9484fb499-7fxx6 -n default -- df -h
+Filesystem                Size      Used Available Use% Mounted on
+/dev/mapper/360014053dd95460a6214f2e9b677d4aa
+                        196.6G     59.0M    188.0G   0% /data
+[root@master]#
+
+
+(9) Edit or patch the PVC to increase PVC size from 200Gi to 250Gi (for example).
+
+[root@master]# kubectl patch pvc csi-pvc-deployment --patch '{"spec": {"resources": {"requests": {"storage": "250Gi"}}}}'
+persistentvolumeclaim/csi-pvc-deployment patched
+[root@master]# 
+
+
+(10) The new volume size of 250Gi is changed on the PV bound to PVC, but the PVC continues to show 200Gi until the Pod is restarted. This is expected. For example: PVC conditions and events might show the following when described (#kubectl describe pvc <name>):
+
+Conditions:
+  Type                      Status  LastProbeTime                     LastTransitionTime                Reason  Message
+  ----                      ------  -----------------                 ------------------                ------  -------
+  FileSystemResizePending   True    Mon, 01 Jan 0001 00:00:00 +0000   Fri, 27 Sep 2019 20:35:12 +0000           Waiting for user to (re-)start a pod to finish file system resize of volume on node.
+Events:
+  Type     Reason                    Age    From                                                              Message
+  ----     ------                    ----   ----                                                              -------
+  Warning  ExternalExpanding         4m59s  volume_expand                                                     Ignoring the PVC: didn't find a plugin capable of expanding the volume; waiting for an external controller to process this PVC.
+  Normal   Resizing                  4m59s  external-resizer dsp.csi.daterainc.io                             External resizer is resizing volume pvc-09c58728-d537-4f93-9324-52e961d639ec
+  Normal   FileSystemResizeRequired  4m58s  external-resizer dsp.csi.daterainc.io                             Require file system resize of volume on node
+
+
+To see the PVC requested size also change, restart the Pod by reducing the replicas to 0 and then back to 1 as shown below. This will also resize the filesystem.
+
+[root@master]# kubectl scale deployment csi-app-deployment --replicas=0
+deployment.apps/csi-app-deployment scaled
+[root@master]# 
+[root@master]# sleep 30
+[root@master]# 
+[root@master]# kubectl scale deployment csi-app-deployment --replicas=1
+deployment.apps/csi-app-deployment scaled
+[root@master]# 
+
+
+(11) After Pod restart, you would see both PVC and PV show 250Gi size, thus concluding Volume expansion. Check the volume size as seen from inside the deployed Pod.
+
+[root@master]# kubectl get pvc
+NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS        AGE
+csi-pvc-deployment   Bound    pvc-5e9e5e98-3692-4958-89f4-b39606193802   250Gi      RWX            dat-block-storage   46m
+[root@master]# 
+[root@master]# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS        REASON   AGE
+pvc-5e9e5e98-3692-4958-89f4-b39606193802   250Gi      RWX            Delete           Bound    default/csi-pvc-deployment   dat-block-storage            46m
+[root@master]# 
+[root@master]# kubectl get pod
+NAME                                 READY   STATUS    RESTARTS   AGE
+csi-app-deployment-9484fb499-6dbv8   1/1     Running   0          4m52s
+[root@master]# 
+[root@master]# kubectl exec -it csi-app-deployment-9484fb499-6dbv8 -n default -- df -h
+Filesystem                Size      Used Available Use% Mounted on
+/dev/sdc                245.8G     58.6M    235.2G   0% /data
+[root@master]# 
+
