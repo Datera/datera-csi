@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-        units "github.com/docker/go-units"
+	units "github.com/docker/go-units"
 	co "github.com/Datera/datera-csi/pkg/common"
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
 	unix "golang.org/x/sys/unix"
@@ -132,11 +132,11 @@ func (v *Volume) ExpandFs(path, fs string, size int64) error {
 	if err != nil {
 		return err
 	}
-        co.Debugf(ctxt, "Expand to size requested = %d", size * units.GiB)
+	co.Debugf(ctxt, "Expand to size requested = %d", size * units.GiB)
 	if err := checkDeviceSize(ctxt, device, size); err != nil {
 		return err
 	}
-        return expandFs(ctxt, device, fs)
+	return expandFs(ctxt, device, fs)
 }
 
 func getMajorMinor(device string) (uint32, uint32, error) {
@@ -227,29 +227,24 @@ func readlink(ctxt context.Context, device string) (string, error) {
 
 func deviceFromMount(ctxt context.Context, file string) (string, error) {
 
-        // Multiple Unix pipes does not work well in Golang
-        // Breaking into 2 distinct commands
-        cmd1 :=  []string{"sh", "-c", fmt.Sprintf("grep '%s' /proc/mounts", file)}
-        out1, err1 := co.RunCmd(ctxt, cmd1...)
+	cmd :=  []string{"sh", "-c", fmt.Sprintf("grep '%s' /proc/mounts", file)}
+	out, err := co.RunCmd(ctxt, cmd...)
+	if err != nil {
+		return "", err
+	}
 
-        cmd2 :=  []string{"sh", "-c", fmt.Sprintf("echo '%s' | awk '{print $1}'", out1)}
-        out2, err2 := co.RunCmd(ctxt, cmd2...)
+	components := strings.Fields(out)
+	device := components[0]
 
-        if err1 != nil {
-	       return "", err1
-        }
-        if err2 != nil {
-               return "", err2
-        }
-	dev, err := readlink(ctxt, out2)
+	dev, err := readlink(ctxt, device)
 	// If readlink fails, we'll assume the device we pulled from /proc/mounts
 	// is correct.  Some versions of readlink won't error out and instead will
 	// return the file/directory that was passed in, in which case we'll just
 	// return that
 	if err != nil {
-		return out2, nil
+		return device, nil
 	}
-	return dev, nil
+	return strings.TrimSpace(dev), nil
 }
 
 // Cases:
@@ -257,7 +252,7 @@ func deviceFromMount(ctxt context.Context, file string) (string, error) {
 // /var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-<uuid>/globalmount /var/lib/kubelet/plugins/kubernetes.io/csi/pv/new_mount
 
 func mount(ctxt context.Context, source, dest string, options []string, fs string) error {
-	co.Debugf(ctxt, "mount called. source: %s, dest: %s, options: %s, fs: %s", source, dest, options, fs)
+	co.Debugf(ctxt, "Mount called. source: %s, dest: %s, options: %s, fs: %s", source, dest, options, fs)
 
 	// Create destination directory if it doesn't exist
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
@@ -270,33 +265,33 @@ func mount(ctxt context.Context, source, dest string, options []string, fs strin
 	dev, err := deviceFromMount(ctxt, source)
 
 	// If we couldn't resolve, then we're probably working with the device already
-        cmd := []string{}
-        bind := false
+	cmd := []string{}
+	bind := false
 
-	if err != nil || strings.TrimSpace(dev) == "" {
+	if err != nil {
 		dev = source
-	        for _, opt := range options {
-                        if opt == "--bind" {
-                                bind = true
-	                }
-                }
-                if bind {
-                        cmd = append([]string{"mount", dev, dest}, options...)
-                } else {
-                        cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
-                }
+		for _, opt := range options {
+			if opt == "--bind" {
+				bind = true
+			}
+		}
+		if bind {
+			cmd = append([]string{"mount", dev, dest}, options...)
+		} else {
+			cmd = append([]string{"mount", "-t", fs, dev, dest}, options...)
+		}
 	} else {
-                // Remove the --bind option from options array
-                for idx, opt := range options {
-                        if opt == "--bind" {
-                                copy(options[idx:], options[idx+1:])
-                                options[len(options)-1] = ""
-                                options = options[:len(options)-1]
-                                break
-                        }
-                }
-                cmd = append([]string{"mount", dev, dest}, options...)
-        }
+		// Remove the --bind option from options array
+		for idx, opt := range options {
+			if opt == "--bind" {
+				copy(options[idx:], options[idx+1:])
+				options[len(options)-1] = ""
+				options = options[:len(options)-1]
+				break
+			}
+		}
+		cmd = append([]string{"mount", dev, dest}, options...)
+	}
 
 	_, err = co.RunCmd(ctxt, cmd...)
 	return err
@@ -324,8 +319,8 @@ func checkDeviceSize(ctxt context.Context, device string, expectedSize int64) er
 		if err != nil {
 			co.Warningf(ctxt, err.Error())
 		}
-                out = strings.TrimSuffix(out, "\n")
-                expectedSize = int64(expectedSize * units.GiB)
+		out = strings.TrimSuffix(out, "\n")
+		expectedSize = int64(expectedSize * units.GiB)
 		size, err := strconv.ParseInt(out, 10, 0)
 		if err != nil {
 			co.Warningf(ctxt, "Could not parse int: %s", err.Error())

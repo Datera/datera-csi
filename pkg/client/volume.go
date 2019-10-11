@@ -232,7 +232,7 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateVolume")
 	co.Debugf(ctxt, "CreateVolume invoked for %s, volOpts: %#v", name, volOpts)
 	var ai dsdk.AppInstancesCreateRequest
-        var mode string = "kubernetes"
+	var mode string = "kubernetes"
 	if volOpts.Template != "" {
 		// From Template
 		template := strings.Trim(volOpts.Template, "/")
@@ -243,7 +243,7 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 		ai = dsdk.AppInstancesCreateRequest{
 			Ctxt:        ctxt,
 			Name:        name,
-                        CreateMode:  mode,
+			CreateMode:  mode,
 			AppTemplate: at,
 		}
 		if !volOpts.DisableTemplateOverride {
@@ -266,7 +266,7 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 		ai = dsdk.AppInstancesCreateRequest{
 			Ctxt:           ctxt,
 			Name:           name,
-                        CreateMode:     mode,
+			CreateMode:     mode,
 			CloneVolumeSrc: c,
 		}
 	} else if volOpts.CloneSnapSrc != "" {
@@ -276,7 +276,7 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 		ai = dsdk.AppInstancesCreateRequest{
 			Ctxt:             ctxt,
 			Name:             name,
-                        CreateMode:       mode,
+			CreateMode:       mode,
 			CloneSnapshotSrc: c,
 		}
 	} else {
@@ -313,7 +313,7 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 		ai = dsdk.AppInstancesCreateRequest{
 			Ctxt:             ctxt,
 			Name:             name,
-                        CreateMode:       mode,
+			CreateMode:       mode,
 			StorageInstances: []*dsdk.StorageInstance{si},
 		}
 	}
