@@ -22,22 +22,7 @@ root     26330 26311  5 04:46 ?        00:06:48 kube-apiserver --advertise-addre
 (3) Ensure the Datera CSI driver yaml from under /datera-csi/deploy/kubernetes/release/1.0/csi-datera-x.x.x is atleast version 1.0.8 or higher.
 
 
-(4) Change the accessMode of the PVC to RWX
-
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: csi-pvc
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: dat-block-storage
-
-
-(5) Add and set the allowVolumeExpansion key to 'true' in StorageClass definition
+(4) Add and set the allowVolumeExpansion key to 'true' in StorageClass definition
 
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
@@ -52,7 +37,7 @@ parameters:
 allowVolumeExpansion: true
 
 
-(6) Create a PVC using the StorageClass created above
+(5) Change the accessMode of the PVC to RWS and create the PVC using the StorageClass created above
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -67,7 +52,7 @@ spec:
   storageClassName: dat-block-storage
 
 
-(7) Create a Pod deployment as shown in example below
+(6) Create a Pod deployment as shown in example below
 
 apiVersion: apps/v1
 kind: Deployment
@@ -110,7 +95,7 @@ spec:
           claimName: csi-pvc-deployment
 
 
-(8) Check the volume size as shown under "kubectl get pvc", "kubectl get pv" and "kubectl exec -it <pod_name> -n <namespace> -- df -h" aare as expected.
+(7) Check the volume size as shown under "kubectl get pvc", "kubectl get pv" and "kubectl exec -it <pod_name> -n <namespace> -- df -h" aare as expected.
 
 [root@master]# kubectl get pvc
 NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS        AGE
@@ -131,14 +116,14 @@ Filesystem                Size      Used Available Use% Mounted on
 [root@master]#
 
 
-(9) Edit or patch the PVC to increase PVC size from 200Gi to 250Gi (for example).
+(8) Edit or patch the PVC to increase PVC size from 200Gi to 250Gi (for example).
 
 [root@master]# kubectl patch pvc csi-pvc-deployment --patch '{"spec": {"resources": {"requests": {"storage": "250Gi"}}}}'
 persistentvolumeclaim/csi-pvc-deployment patched
 [root@master]# 
 
 
-(10) The new volume size of 250Gi is changed on the PV bound to PVC, but the PVC continues to show 200Gi until the Pod is restarted. This is expected. For example: PVC conditions and events might show the following when described (#kubectl describe pvc <name>):
+(9) The new volume size of 250Gi is changed on the PV bound to PVC, but the PVC continues to show 200Gi until the Pod is restarted. This is expected. For example: PVC conditions and events might show the following when described (#kubectl describe pvc <name>):
 
 Conditions:
   Type                      Status  LastProbeTime                     LastTransitionTime                Reason  Message
@@ -164,7 +149,7 @@ deployment.apps/csi-app-deployment scaled
 [root@master]# 
 
 
-(11) After Pod restart, you would see both PVC and PV show 250Gi size, thus concluding Volume expansion. Check the volume size as seen from inside the deployed Pod.
+(10) After Pod restart, you would see both PVC and PV show 250Gi size, thus concluding Volume expansion. Check the volume size as seen from inside the deployed Pod.
 
 [root@master]# kubectl get pvc
 NAME                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS        AGE
