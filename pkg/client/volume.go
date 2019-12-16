@@ -97,6 +97,7 @@ func (v VolOpts) ToMap() map[string]string {
 		"fs_type":                   v.FsType,
 		"fs_args":                   strings.Join(v.FsArgs, " "),
 		"placement":                 v.PlacementMode,
+		"placement_policy":          v.PlacementPolicy,
 		"clone_src":                 v.CloneSrc,
 		"clone_vol_src":             v.CloneVolSrc,
 		"clone_snap_src":            v.CloneSnapSrc,
@@ -291,6 +292,14 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 					Path: volOpts.PlacementPolicy,
 				},
 				ReplicaCount: int(volOpts.Replica),
+				PerformancePolicy: &dsdk.PerformancePolicy{
+					WriteIopsMax: int(volOpts.WriteIopsMax),
+					ReadIopsMax: int(volOpts.ReadIopsMax),
+					TotalIopsMax: int(volOpts.TotalIopsMax),
+					WriteBandwidthMax: int(volOpts.WriteBandwidthMax),
+					ReadBandwidthMax: int(volOpts.ReadBandwidthMax),
+					TotalBandwidthMax: int(volOpts.TotalBandwidthMax),
+				},
 			}
 		} else if err != nil {
 			co.Errorf(ctxt, "Could not determine vendor version: %s", r.vendorVersion)
@@ -301,6 +310,14 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 				Size:          int(volOpts.Size),
 				PlacementMode: volOpts.PlacementMode,
 				ReplicaCount:  int(volOpts.Replica),
+				PerformancePolicy: &dsdk.PerformancePolicy{
+					WriteIopsMax: int(volOpts.WriteIopsMax),
+					ReadIopsMax: int(volOpts.ReadIopsMax),
+					TotalIopsMax: int(volOpts.TotalIopsMax),
+					WriteBandwidthMax: int(volOpts.WriteBandwidthMax),
+					ReadBandwidthMax: int(volOpts.ReadBandwidthMax),
+					TotalBandwidthMax: int(volOpts.TotalBandwidthMax),
+				},
 			}
 		}
 		si := &dsdk.StorageInstance{
