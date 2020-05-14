@@ -26,6 +26,7 @@ Datera is a fully disaggregated scale-out storage platform, that runs over multi
 Datera gives Kubernetes (K8s) enterprise customers the peace of mind of a future-proof data services platform that is ready for diverse and demanding workloads -- as K8s continues to dominate the container orchestration arena, it is likely to containerize higher-end workloads, as well.
 
 The Datera CSI Volume Plugin uses Datera storage backend as distributed data storage for containers.
+
 ![alt text](CSI-Datera-Driver.png "Datera CSI driver Implementation")
 
 ## Supported Versions
