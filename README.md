@@ -9,6 +9,7 @@ This plugin uses Datera storage backend as distributed data storage for containe
 | v1.0.6 | v1.0 | v1.13.X+ |
 | v1.0.7 | v1.0 | v1.13.X+ |
 | v1.0.8 | v1.0 | v1.13.X+ |
+| v1.0.9 | v1.0 | v1.18.X+ |
 
 ## Kubernetes Installation/Configuration (Kubernetes v1.13+ required)
 

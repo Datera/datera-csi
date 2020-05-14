@@ -305,6 +305,9 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 			co.Errorf(ctxt, "Could not determine vendor version: %s", r.vendorVersion)
 			return nil, err
 		} else {
+			co.Debugf(ctxt, "Volume create for Datera OS version < 3.3")
+			co.Debugf(ctxt, "Performance policy Total Iops Max: %v", volOpts.TotalIopsMax)
+			co.Debugf(ctxt, "Performance policy Path : %s", volOpts.PlacementPolicy)
 			vol = &dsdk.Volume{
 				Name:          "volume-1",
 				Size:          int(volOpts.Size),
