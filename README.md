@@ -1,6 +1,35 @@
 # Datera CSI Volume Plugin
 
-This plugin uses Datera storage backend as distributed data storage for containers.
+- [ 1. Overview ](#overview)
+- [ 2. Supported versions ](#supported-versions)
+- [ 3. Driver Installation ](#driver-installation)
+  * [ 3.1. Prerequisites ](#prerequisites) 
+  * [ 3.2. Update install YAML ](#update-install-yaml)
+  * [ 3.3. Optional Secrets ](#optional-secrets)
+  * [ 3.4. Install Datera CSI driver ](#install-datera-csi-driver)
+- [ 4. Performing Volume operations ](#performing-volume-operations)
+  * [ 4.1. Create StorageClass ](#create-storageclass)
+  * [ 4.2. Create a Volume ](#create-a-volume)
+  * [ 4.3. Create an Application using the Volume](#create-an-application-using-the-volume)
+  * [ 4.4. Creating and using Volume Snapshots ](#creating-and-using-volume-snapshots)
+- [ 5. Collecting Logs ](#collecting-logs)
+- [ 6. Odd Case Environment Variables ](#odd-case-environment-variables)
+- [ 7. Note on K8S setup through Rancher ](#note-on-k8s-setup-through-rancher)
+- [ 8. Driver upgrades and downgrades ](#driver-upgrades-and-downgrades)
+  
+  
+
+## Overview
+
+Datera is a fully disaggregated scale-out storage platform, that runs over multiple standard protocols (iSCSI, Object/S3), combining both heterogeneous compute platform/framework flexibility (HPE, Dell, Fujitsu, Cisco and others) with rapid deployment velocity and access to data from anywhere. Datera® is a software-defined data infrastructure for virtualized environments, databases, cloudstacks, DevOps, microservices and container deployments. It provides operations-free delivery and orchestration of data at scale for any application within a traditional datacenter, private cloud or hybrid cloud setting.
+ 
+Datera gives Kubernetes (K8s) enterprise customers the peace of mind of a future-proof data services platform that is ready for diverse and demanding workloads -- as K8s continues to dominate the container orchestration arena, it is likely to containerize higher-end workloads, as well.
+
+The Datera CSI Volume Plugin uses Datera storage backend as distributed data storage for containers.
+
+![alt text](CSI-Datera-Driver.png "Datera CSI driver Implementation")
+
+## Supported Versions
 
 | Datera CSI Plugin Version | Supported CSI Versions | Supported Kubernetes Versions |
 | --- | --- | --- |
@@ -9,13 +38,15 @@ This plugin uses Datera storage backend as distributed data storage for containe
 | v1.0.6 | v1.0 | v1.13.X+ |
 | v1.0.7 | v1.0 | v1.13.X+ |
 | v1.0.8 | v1.0 | v1.13.X+ |
+| v1.0.9 | v1.0 | v1.13.X+ |
 
-## Kubernetes Installation/Configuration (Kubernetes v1.13+ required)
+## Driver Installation
 
-### NOTE: Container-based ISCSID is no longer supported
+### Prerequisites
 
-You can use the iscsid on the host following steps (These MUST be performed
-before installing the CSI plugin):
+Kubernetes Installation/Configuration (Kubernetes v1.13+ required). Note that container-based ISCSID is no longer supported. The Datera implementation runs an iscsi-send inside the driver containers and an iscsi-recv on the kubernetes hosts. The iscsi-recv would further use the iscsid on the kubernetes hosts for performing iSCSI operations. 
+
+Ensure iscsid and iscsi-recv are running on the hosts. <b>These MUST be performed before installing the CSI plugin</b>:
 
 First install iscsid on the kubernetes hosts
 
@@ -62,7 +93,9 @@ $ systemctl --all | grep iscsi-recv
 iscsi-recv.service       loaded    active     running   iscsi-recv container to host iscsiadm adapter service
 ```
 
-Modify deploy/kubernetes/releases/1.0/csi-datera-v1.0.4.yaml and update the
+### Update install YAML
+
+Modify deploy/kubernetes/releases/1.0/csi-datera-v1.0.x.yaml and update the
 values for the following environment variables in the yaml:
 
 * `DAT_MGMT`   -- The management IP of the Datera system
@@ -72,17 +105,90 @@ values for the following environment variables in the yaml:
 * `DAT_API`    -- The API version to use when communicating (should be 2.2,
                 currently the only version the plugin supports)
 
-There are two locations for each value within the yaml that should be modified
+There are 2 locations for each value within the yaml that should be modified. One is under the StatefulSet and the other is under the DaemonSet. Note that the yaml does not come with a built-in StorageClass. Create one using the following example shown and modifying it depending on deployment needs.
 
-Additionally the yaml comes with a built-in StorageClass (dat-block-storage).
-Feel free to modify or remove it depending on deployment needs.
+### Optional Secrets
 
-Volume Parameters can be placed within the ``parameters`` section of the
-StorageClass
+Instead of putting the username/password in the yaml file directly instead you can use the kubernetes secrets capabilities.
 
-In the following example we configure volumes with a replica of 3 and a QoS of
-1000 IOPS max.  All parameters must be strings (pure numbers and booleans
-should be enclosed in quotes)
+NOTE: This must be done before installing the CSI driver.
+
+First create the secrets.  They're base64 encoded strings.  The two required secrets are "username" and "password". Modify and save the below yaml as secrets.yaml.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: datera-secret
+  namespace: kube-system
+type: Opaque
+data:
+  # base64 encoded username
+  # generate this via "$ echo -n 'your-username' | base64"
+  username: YWRtaW4=
+  # base64 encoded password
+  # generate this via "$ echo -n 'your-password' | base64"
+  password: cGFzc3dvcmQ=
+```
+
+Then create the secrets.
+
+```bash
+$ kubectl create -f secrets.yaml
+```
+
+Now install the CSI driver like above, but using the "secrets" yaml:
+
+```bash
+$ kubectl create -f csi-datera-secrets-v1.0.4.yaml
+```
+
+The only difference between the "secrets" yaml and the regular yaml is the
+use of secrets for the "username" and "password" fields.
+
+### Install Datera CSI driver
+
+```bash
+$ kubectl create -f csi-datera-v1.0.x.yaml
+```
+For example:
+
+```bash
+# kubectl create -f csi-datera-secrets-1.0.9.yaml
+storageclass.storage.k8s.io/dat-block-storage created
+serviceaccount/csi-datera-controller-sa created
+clusterrole.rbac.authorization.k8s.io/csi-datera-provisioner-role created
+clusterrolebinding.rbac.authorization.k8s.io/csi-datera-provisioner-binding created
+clusterrole.rbac.authorization.k8s.io/csi-datera-attacher-role created
+clusterrolebinding.rbac.authorization.k8s.io/csi-datera-attacher-binding created
+clusterrole.rbac.authorization.k8s.io/csi-datera-snapshotter-role created
+clusterrolebinding.rbac.authorization.k8s.io/csi-datera-snapshotter-binding created
+statefulset.apps/csi-provisioner created
+serviceaccount/csi-datera-node-sa created
+clusterrole.rbac.authorization.k8s.io/csi-datera-node-driver-registrar-role created
+clusterrolebinding.rbac.authorization.k8s.io/csi-datera-node-driver-registrar-binding created
+daemonset.apps/csi-node created
+#
+```
+
+You should see one csi-provisioner pod and 'N' csi-node pods running in kube-system namespace, where N = number of kubernetes worker nodes. The csi-provisioner pod can run on any kubernetes node.
+
+```bash
+# kubectl get pods -n kube-system -o wide | egrep 'NAME|csi-'
+NAME                                       READY   STATUS    RESTARTS   AGE     IP           NODE    NOMINATED NODE   READINESS GATES
+csi-node-cwpfk                             3/3     Running   0          164m    1.1.1.1      node1   <none>           <none>
+csi-node-lx66c                             3/3     Running   0          164m    2.2.2.2      node2   <none>           <none>
+csi-provisioner-0                          6/6     Running   0          163m    1.1.1.1      node1   <none>           <none>
+[root@tlx51cp tmp]# 
+```
+
+## Performing Volume operations
+
+### Create StorageClass
+
+Before creating a Volume, a StorageClass needs to be created. This StorageClass acts like a template where you can specify your Volume and QoS parameters. The parameters can be placed within the ``parameters`` section of the StorageClass.
+
+In the following example we configure volumes with a replica of 3 and a QoS of 1000 IOPS max.  All parameters must be strings (pure numbers and booleans should be enclosed in quotes). Save the following as 'csi-storageclass.yaml' file.
 
 ```yaml
 kind: StorageClass
@@ -119,16 +225,15 @@ Name                   |     Default
 ``fs_args``            |     ``-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F``
 ``delete_on_unmount``  |     ``false``
 
-NOTE: All parameters MUST be strings in the yaml file otherwise the kubectl
-parser will fail.  If in doubt, enclose each in double quotes ("")
+NOTE: All parameters MUST be strings in the yaml file otherwise the kubectl parser will fail.  If in doubt, enclose each in double quotes ("")
 
 ```bash
-$ kubectl create -f csi/csi-datera-v1.0.4.yaml
+$ kubectl create -f csi-storageclass.yaml
 ```
 
-## Create A Volume
+### Create a Volume
 
-Example PVC
+A volume on Datera backend is created automatically when a Persistent Volume Claim (PVC) is created. This PVC can be further referenced in a Pod manifest to use the volume. 
 
 ```yaml
 apiVersion: v1
@@ -146,12 +251,13 @@ spec:
 ```
 
 ```bash
-$ kubectl create -f pvc.yaml
+$ kubectl create -f csi-pvc.yaml
 ```
 
-## Create An Application Using the Volume
+### Create an Application using the Volume
 
-Save the following as app.yaml
+Create and save the following as csi-app.yaml. Note that this Pod claims a volume by specifying the name of a PVC claim "csi-pvc".
+
 ```yaml
 kind: Pod
 apiVersion: v1
@@ -172,18 +278,13 @@ spec:
 ```
 
 ```bash
-$ kubectl create -f app.yaml
+$ kubectl create -f csi-app.yaml
 ```
 
-## Snapshot Support (alpha)
+### Creating and using Volume Snapshots
 
-NOTE: CSI Snapshots are currently an Alpha feature in Kubernetes, weird
-behavior is expected.
+To create a volume snapshot in kubernetes you can use the following VolumeSnapshotClass and VolumeSnapshot as an example. Save the following as csi-snap-class.yaml.
 
-To create a volume snapshot in kubernetes you can use the following
-VolumeSnapshotClass and VolumeSnapshot as an example:
-
-Save the following as snap-class.yaml
 ```yaml
 apiVersion: snapshot.storage.k8s.io/v1alpha1
 kind: VolumeSnapshotClass
@@ -202,6 +303,7 @@ Name                        |     Default
 ``type``                    |     ``local`` options: local, remote, local\_and\_remote
 
 Example VolumeSnapshotClass yaml file with parameters:
+
 ```yaml
 apiVersion: snapshot.storage.k8s.io/v1alpha1
 kind: VolumeSnapshotClass
@@ -214,10 +316,11 @@ parameters:
 ```
 
 ```bash
-$ kubectl create -f snap-class.yaml
+$ kubectl create -f csi-snap-class.yaml
 ```
 
-Save the following as snap.yaml
+Create and save the following as csi-snap.yaml.
+
 ```yaml
 apiVersion: snapshot.storage.k8s.io/v1alpha1
 kind: VolumeSnapshot
@@ -229,11 +332,13 @@ spec:
     name: csi-pvc
     kind: PersistentVolumeClaim
 ```
+
 ```bash
 $ kubectl create -f snap.yaml
 ```
 
-We can now view the snapshot using kubectl
+We can now view the snapshot using kubectl command.
+
 ```bash
 $ kubectl get volumesnapshots
 NAME       AGE
@@ -241,6 +346,7 @@ csi-snap   2m
 ```
 
 Now we can use this snapshot to create a new PVC.
+
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -259,61 +365,19 @@ spec:
       storage: 100Gi
 ```
 
-## Optional Secrets
-
-Instead of putting the username/password in the yaml file directly instead
-you can use the kubernetes secrets capabilities.
-
-NOTE: This must be done before installing the CSI driver.
-
-First create the secrets.  They're base64 encoded strings.  The two required
-secrets are "username" and "password".
-
-Modify and save the below yaml as secrets.yaml
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: datera-secret
-  namespace: kube-system
-type: Opaque
-data:
-  # base64 encoded username
-  # generate this via "$ echo -n 'your-username' | base64"
-  username: YWRtaW4=
-  # base64 encoded password
-  # generate this via "$ echo -n 'your-password' | base64"
-  password: cGFzc3dvcmQ=
-```
-Then create the secrets
-
-```bash
-$ kubectl create -f secrets.yaml
-```
-
-Now install the CSI driver like above, but using the "secrets" yaml:
-
-```bash
-$ kubectl create -f csi-datera-secrets-v1.0.4.yaml
-```
-
-The only difference between the "secrets" yaml and the regular yaml is the
-use of secrets for the "username" and "password" fields.
-
 ## Collecting Logs
-You can collect logs from the entire Datera CSI plugin via the ``csi_log_collect.sh``
-script in the ``datera-csi/assets`` folder
 
-Basic log collection is very simple.  Run the script with no arguments on the
-Kubernetes master node.
+You can collect logs from the entire Datera CSI plugin via the ``csi_log_collect.sh`` script in the ``datera-csi/assets`` folder. Basic log collection is very simple.  Run the script with no arguments on the Kubernetes master node.
+
 ```bash
+$ chmod +x ./assets/csi_log_collect.sh
 $ ./assets/csi_log_collect.sh
 ```
 
 ## Odd Case Environment Variables
-Sometimes customer setups require a bit of flexibility.  These environment
-variables allow for tuning the plugin to behave in atypical ways.  USE THESE
-WITH CAUTION.
+
+Sometimes customer setups require a bit of flexibility.  These environment variables allow for tuning the plugin to behave in atypical ways.  USE THESE WITH CAUTION.
+
 * DAT\_SOCKET               -- Socket that driver listens on
 * DAT\_HEARTBEAT            -- Interval to perform Datera heartbeat function
 * DAT\_TYPE                 -- Which CSI services to expose on the binary
@@ -332,11 +396,13 @@ In Rancher setup, the kubelet is run inside a container and hence may not have a
 ```bash
   --mount type=bind,source="/var/datera/csi-iscsi.sock"/target,target=/var/datera/csi-iscsi.sock
 ```
+
 ## Driver upgrades and downgrades
 
-Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.7 to v1.0.6 can be done as follows:
+Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.9 to v1.0.8 can be done as follows:
 
 ```bash
-# kubectl delete -f csi-datera-1.0.7.yaml
-# kubectl create -f csi-datera-1.0.6.yaml
+# kubectl delete -f csi-datera-1.0.9.yaml
+# kubectl create -f csi-datera-1.0.8.yaml
 ```
+

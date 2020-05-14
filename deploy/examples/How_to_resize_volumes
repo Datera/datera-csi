@@ -19,10 +19,10 @@ root     26330 26311  5 04:46 ?        00:06:48 kube-apiserver --advertise-addre
 [root@tlx16cp tmp]# 
 
 
-(3) Ensure the Datera CSI driver yaml from under /datera-csi/deploy/kubernetes/release/1.0/csi-datera-x.x.x is atleast version 1.0.8 or higher.
+(3) Ensure you have v1.0.8 or higher of the Datera CSI driver yaml. If you have downloaded the driver from git, it will be under the datera-csi/deploy/kubernetes/release/1.0/ directory.
 
 
-(4) Add and set the allowVolumeExpansion key to 'true' in StorageClass definition
+(4) Add and set the allowVolumeExpansion key to 'true' in StorageClass definition.
 
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
@@ -37,7 +37,7 @@ parameters:
 allowVolumeExpansion: true
 
 
-(5) Change the accessMode of the PVC to RWS and create the PVC using the StorageClass created above
+(5) Change the accessMode of the PVC to RWX and create the PVC using the StorageClass created above.
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -52,7 +52,7 @@ spec:
   storageClassName: dat-block-storage
 
 
-(6) Create a Pod deployment as shown in example below
+(6) Create a Pod deployment as shown in example below.
 
 apiVersion: apps/v1
 kind: Deployment

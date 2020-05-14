@@ -33,18 +33,6 @@
 # These need to be set for both the controller StatefulSet and node DaemonSet
 
 ---
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: dat-block-storage
-  namespace: kube-system
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-provisioner: dsp.csi.daterainc.io
-parameters:
-  replica_count: "1"
-allowVolumeExpansion: true
----
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -244,7 +232,7 @@ spec:
               mountPath: /csi/
         - name: dat-csi-plugin-controller
           imagePullPolicy: Always
-          image: dateraiodev/dat-csi-plugin:v1.0.8
+          image: dateraiodev/dat-csi-plugin:v1.0.8-patch
           command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
@@ -252,7 +240,7 @@ spec:
             - name: DAT_DRIVER_NAME
               value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: 172.19.2.53
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
@@ -371,7 +359,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: dateraiodev/dat-csi-plugin:v1.0.8
+          image: dateraiodev/dat-csi-plugin:v1.0.8-patch
           # The sleep is to allow the iscsid sidecar to start Running iscsiadm
           # -m session initializes /etc/iscsi/initiatorname.iscsi in this
           # container
@@ -382,7 +370,7 @@ spec:
             - name: DAT_DRIVER_NAME
               value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: 172.19.2.53
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS

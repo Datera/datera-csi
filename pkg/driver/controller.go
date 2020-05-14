@@ -303,7 +303,9 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 	params.Size = size
 	// Create AppInstance/StorageInstance/Volume
-	vol, err := d.dc.CreateVolume(id, params, true)
+	// Fix for CET-312. QoS params sent along with volume creation call
+	// No need to update the performance_policy again
+	vol, err := d.dc.CreateVolume(id, params, false)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
