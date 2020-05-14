@@ -33,18 +33,6 @@
 # These need to be set for both the controller StatefulSet and node DaemonSet
 
 ---
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: dat-block-storage
-  namespace: kube-system
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-provisioner: dsp.csi.daterainc.io
-parameters:
-  replica_count: "1"
-allowVolumeExpansion: true
----
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -252,7 +240,7 @@ spec:
             - name: DAT_DRIVER_NAME
               value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: 172.19.2.53
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS
@@ -382,7 +370,7 @@ spec:
             - name: DAT_DRIVER_NAME
               value: dsp.csi.daterainc.io
             - name: DAT_MGMT
-              value: 172.19.2.53
+              value: 1.1.1.1
             - name: DAT_USER
               value: admin
             - name: DAT_PASS

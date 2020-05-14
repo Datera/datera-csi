@@ -26,7 +26,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return nil, status.Errorf(codes.InvalidArgument, "VolumeId cannot be empty")
 	}
 	if req.StagingTargetPath == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty")
+		return nil, status.Errorf(codes.InvalidArgument, "StagingTargetPath cannot be empty. Kubelet on the worker node is responsible for creating this StagingTargetPath directory.")
 	}
 	vc := req.VolumeCapability
 	if vc == nil {
