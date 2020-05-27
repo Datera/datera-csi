@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
+
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	grpc "google.golang.org/grpc"
 	gmd "google.golang.org/grpc/metadata"
@@ -290,12 +292,12 @@ func logServerAndSetId(ctx context.Context, req interface{}, info *grpc.UnarySer
 	id := co.GenId()
 	ctxt := co.WithCtxt(ctx, "rpc", id)
 	ctxt = gmd.AppendToOutgoingContext(ctxt, "datera-request-id", id)
-	co.Infof(ctxt, "GRPC -- request: %s -- %s -- %+v\n", info.FullMethod, id, req)
+	co.Infof(ctxt, "GRPC -- request: %s -- %s -- %+v\n", info.FullMethod, id, protosanitizer.StripSecrets(req))
 	ts1 := time.Now()
 	resp, err := handler(ctxt, req)
 	ts2 := time.Now()
 	td := math.Round(float64(ts2.Sub(ts1) / time.Second))
-	co.Infof(ctxt, "GRPC -- response: %s -- %s %fs -- %+v\n", info.FullMethod, id, td, resp)
+	co.Infof(ctxt, "GRPC -- response: %s -- %s %fs -- %+v\n", info.FullMethod, id, td, protosanitizer.StripSecrets(resp))
 	if err != nil {
 		co.Errorf(ctxt, "GRPC -- error: %s -- %s -- %+v\n", info.FullMethod, id, err)
 	}

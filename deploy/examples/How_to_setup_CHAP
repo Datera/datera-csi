@@ -1,0 +1,133 @@
+CHAP Authentication on Datera involves 2 things:
+
+A) Setting up CHAP auth on the Volume Storage Instance on Datera backend.
+B) Setting up CHAP on the Kubernetes Worker nodes which does iSCSI login and discovery.
+
+Datera CSI driver v1.0.10+ handles both the above. Please follow the instructions below.
+
+Notes:
+
+- CHAP authentication uses a shared secret between Datera and K8S worker nodes.
+- With CHAP 1-way or Uni-directional authentication, the Target (Datera) authenticates the Initiator (K8S worker node).
+- With CHAP 2-way or Bi-directional authentication, both the Target (Datera) and Initiator (K8S worker node) authenticates each other.
+- In Datera terms, CHAP 1-way is called 'chap' and CHAP 2-way is called 'mchap'. 'mchap' stands for Mutual CHAP.
+- When using CHAP 2-way, the username and password must be different in each direction. This is per Open-iSCSI standard.
+- The CHAP credentials are stripped before printing to driver logs.
+
+
+1) Create CHAP secrets as below. The node.session.auth.* keys are populated using the base64 encoding. If "node.session.auth.username_in" is provided, then CHAP 2-way is inferred.
+ 
+$ echo -n "dat_admin" | base64
+ZGF0X2FkbWlu
+$ echo -n "dat_password" | base64
+ZGF0X3Bhc3N3b3Jk
+$ echo -n "dat_admin_in" | base64
+ZGF0X2FkbWluX2lu
+$ echo -n "dat_password_in" | base64
+ZGF0X3Bhc3N3b3JkX2lu
+
+[root@ch21cp tmp]# cat csi-storage-secret-chap.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: chap-secret
+  namespace: default
+type: "kubernetes.io/iscsi-chap"
+data:
+  node.session.auth.username: ZGF0X2FkbWlu             // Provide Target CHAP credentials.
+  node.session.auth.password: ZGF0X3Bhc3N3b3Jk         // Provide Target CHAP credentials.
+  node.session.auth.username_in: ZGF0X2FkbWluX2lu      // Needed for Mutual CHAP only.    
+  node.session.auth.password_in: ZGF0X3Bhc3N3b3JkX2lu  // Needed for Mutual CHAP only.
+[root@ch21cp tmp]# 
+[root@ch21cp tmp]# kubectl create -f csi-storage-secret-chap.yaml
+secret/chap-secret created
+[root@ch21cp tmp]#
+[root@ch21cp tmp]# kubectl get secret | egrep "NAME|chap"
+NAME                  TYPE                                  DATA   AGE
+chap-secret           kubernetes.io/iscsi-chap              4      69m
+[root@ch21cp tmp]#
+
+
+2) Create a StorageClass as shown below. The csi.storage.k8s.io/* keys are referencing the CHAP secret created above. They are passed to Datera CSI driver for creating, deleting and volume staging operations.
+
+ (a) The "csi.storage.k8s.io/node-stage-secret-name" is used to setup the CHAP on worker node.
+ (b) The "csi.storage.k8s.io/provisioner-secret-name" is used to setup the CHAP on Datera App Instance.
+
+[root@ch21cp tmp]# cat csi-storageclass-chap.yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: csi-sc-chap
+  namespace: default
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: dsp.csi.daterainc.io
+parameters:
+  replica_count: "1"
+  csi.storage.k8s.io/node-stage-secret-name: chap-secret   // Needed for ISCSI Login on K8S worker nodes
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+  csi.storage.k8s.io/provisioner-secret-name: chap-secret  // Sets the CHAP or MCHAP on Datera App Instance
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+allowVolumeExpansion: true
+[root@ch21cp tmp]# 
+[root@ch21cp tmp]# kubectl create -f csi-storageclass-chap.yaml
+storageclass.storage.k8s.io/csi-sc-chap created
+[root@ch21cp tmp]#
+[root@ch21cp tmp]# kubectl get storageclass | egrep "NAME|chap"
+NAME                            PROVISIONER            RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+csi-sc-chap (default)           dsp.csi.daterainc.io   Delete          Immediate           true                   70m
+[root@ch21cp tmp]# 
+
+
+3) Create a PVC referencing the StorageClass shown above.
+
+[root@ch21cp tmp]# cat csi-pvc-chap.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-pvc-chap
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: csi-sc-chap
+[root@ch21cp tmp]#
+[root@ch21cp tmp]# kubectl create -f csi-pvc-chap.yaml
+persistentvolumeclaim/csi-pvc-chap created
+[root@ch21cp tmp]#
+[root@ch21cp tmp]# kubectl get pvc | egrep "NAME|chap"
+NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS          AGE
+csi-pvc-chap           Bound    pvc-63fdaf5b-b820-48a6-9dab-fd9869244ca0   5Gi        RWO            csi-sc-chap           70m
+[root@ch21cp tmp]#
+
+
+4) Create an Application Pod and provide the Persistent Volume Claim shown above.
+
+[root@ch21cp tmp]# cat csi-app-chap.yaml 
+kind: Pod
+apiVersion: v1
+metadata:
+  name: my-csi-app-chap
+spec:
+  containers:
+    - name: my-app-image
+      image: alpine
+      volumeMounts:
+      - mountPath: "/data"
+        name: my-app-volume
+      command: [ "sleep", "1000000" ]
+  volumes:
+    - name: my-app-volume
+      persistentVolumeClaim:
+        claimName: csi-pvc-chap
+[root@ch21cp tmp]# 
+[root@ch21cp tmp]# kubeclt create -f csi-app-chap.yaml
+pod/my-csi-app-chap created
+[root@ch21cp tmp]#
+[root@ch21cp tmp]# kubectl get pod | egrep "NAME|chap"
+NAME                   READY   STATUS    RESTARTS   AGE
+my-csi-app-chap        1/1     Running   0          71m
+[root@ch21cp tmp]# 
+

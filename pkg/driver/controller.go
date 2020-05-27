@@ -199,6 +199,10 @@ func registerMdFromCtxt(ctxt context.Context, md *dc.VolMetadata) error {
 }
 
 func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+
+	chapParams := map[string]string{}
+	chapParams = co.StripSecretsAndGetChapParams(req)
+
 	ctxt, ip, clean := d.InitFunc(ctx, "controller", "CreateVolume", *req)
 	defer clean()
 	if ip {
@@ -305,7 +309,12 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	// Create AppInstance/StorageInstance/Volume
 	// Fix for CET-312. QoS params sent along with volume creation call
 	// No need to update the performance_policy again
-	vol, err := d.dc.CreateVolume(id, params, false)
+	// Fix for CET-491. CHAP params are obtained from K8S 
+	// and sent to Datera backend for Auth configuration
+	// Get the CHAP params passed from Kubernetes StorageClass
+	// Strip the credentials and get it as chapParams
+
+	vol, err := d.dc.CreateVolume(id, params, false, chapParams)
 	if err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
@@ -330,6 +339,10 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 }
 
 func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+
+	// Just strip the secrets from the GRPC request.
+	// Discard the returned chapParams since DeleteVolume doesn't need them.
+	_ = co.StripSecretsAndGetChapParams(req)
 	ctxt, ip, clean := d.InitFunc(ctx, "controller", "DeleteVolume", *req)
 	defer clean()
 	if ip {

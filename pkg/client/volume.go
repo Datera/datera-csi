@@ -229,7 +229,7 @@ func (r *DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, erro
 	return v, nil
 }
 
-func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Volume, error) {
+func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, chap_params map[string]string) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateVolume")
 	co.Debugf(ctxt, "CreateVolume invoked for %s, volOpts: %#v", name, volOpts)
 	var ai dsdk.AppInstancesCreateRequest
@@ -323,6 +323,8 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 				},
 			}
 		}
+
+		// Fill the Storage Instance struct
 		si := &dsdk.StorageInstance{
 			Name: "storage-1",
 			IpPool: &dsdk.AccessNetworkIpPool{
@@ -330,6 +332,38 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 			},
 			Volumes: []*dsdk.Volume{vol},
 		}
+
+		if _, exists := chap_params["node.session.auth.username_in"]; exists {
+			si = &dsdk.StorageInstance{
+				Name: "storage-1",
+				IpPool: &dsdk.AccessNetworkIpPool{
+					Path: fmt.Sprintf("/access_network_ip_pools/%s", volOpts.IpPool),
+				},
+				Auth: &dsdk.Auth{
+					Type: "mchap",
+					InitiatorUserName: chap_params["node.session.auth.username_in"],
+					InitiatorPassword: chap_params["node.session.auth.password_in"],
+					TargetUserName: chap_params["node.session.auth.username"],
+					TargetPassword: chap_params["node.session.auth.password"],
+				},
+				Volumes: []*dsdk.Volume{vol},
+			}
+		} else if _, exists := chap_params["node.session.auth.username"]; exists {
+			si = &dsdk.StorageInstance{
+				Name: "storage-1",
+				IpPool: &dsdk.AccessNetworkIpPool{
+					Path: fmt.Sprintf("/access_network_ip_pools/%s", volOpts.IpPool),
+				},
+				Auth: &dsdk.Auth{
+					Type: "chap",
+					TargetUserName: chap_params["node.session.auth.username"],
+					TargetPassword: chap_params["node.session.auth.password"],
+				},
+				Volumes: []*dsdk.Volume{vol},
+			}
+		}
+
+		// Fill the AppInstancesCreateRequest struct
 		ai = dsdk.AppInstancesCreateRequest{
 			Ctxt:             ctxt,
 			Name:             name,
@@ -337,6 +371,8 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 			StorageInstances: []*dsdk.StorageInstance{si},
 		}
 	}
+
+	// Create the App Instance
 	newAi, apierr, err := r.sdk.AppInstances.Create(&ai)
 	if err != nil {
 		co.Error(ctxt, err)

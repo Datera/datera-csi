@@ -15,6 +15,7 @@ import (
 	status "google.golang.org/grpc/status"
 
 	dsdk "github.com/Datera/go-sdk/pkg/dsdk"
+	csi "github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 const (
@@ -159,4 +160,48 @@ func versionToInt(v string) (int, error) {
 		factor /= div
 	}
 	return result, nil
+}
+
+func StripSecretsAndGetChapParams(req interface{}) (map[string]string) {
+
+	stripNeeded := false
+	chapParams := map[string]string{}
+	secrets := map[string]string{}
+
+	switch reqType := req.(type) {
+		case *csi.CreateVolumeRequest:
+			secrets = reqType.Secrets
+			stripNeeded = true
+		case *csi.NodeStageVolumeRequest:
+			secrets = reqType.Secrets
+			stripNeeded = true
+		case *csi.DeleteVolumeRequest:
+			secrets = reqType.Secrets
+			stripNeeded = true
+		default:
+			return secrets
+	}
+
+	if stripNeeded == true {
+
+		if value, exists := secrets["node.session.auth.username"]; exists {
+			secrets["node.session.auth.username"] = "***stripped***"
+			chapParams["node.session.auth.username"] = value
+		}
+		if value, exists := secrets["node.session.auth.password"]; exists {
+			secrets["node.session.auth.password"] = "***stripped***"
+			chapParams["node.session.auth.password"] = value
+		}
+		if value, exists := secrets["node.session.auth.username_in"]; exists {
+			secrets["node.session.auth.username_in"] = "***stripped***"
+			chapParams["node.session.auth.username_in"] = value
+		}
+		if value, exists := secrets["node.session.auth.password_in"]; exists {
+			secrets["node.session.auth.password_in"] = "***stripped***"
+			chapParams["node.session.auth.password_in"] = value
+		}
+
+	}
+	return chapParams
+
 }

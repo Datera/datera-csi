@@ -107,6 +107,17 @@ func (r *Volume) RegisterAcl(cinit *Initiator) error {
 	acl.Initiators = append(acl.Initiators, &dsdk.Initiator{
 		Path: cinit.Path,
 	})
+	// copy the acl.Initiators to another list and remove
+	// initiator entries which has 'Tenant' in them since
+	// Datera API expects only 'Path' to be present
+	initiators := []*dsdk.Initiator{}
+	for _, initiator := range acl.Initiators {
+		if initiator.Tenant == "" {
+			initiators = append(initiators, initiator)
+		}
+	}
+	acl.Initiators = initiators
+
 	if _, apierr, err = acl.Set(&dsdk.AclPolicySetRequest{
 		Ctxt:       ctxt,
 		Initiators: acl.Initiators,

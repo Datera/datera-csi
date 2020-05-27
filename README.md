@@ -39,6 +39,7 @@ The Datera CSI Volume Plugin uses Datera storage backend as distributed data sto
 | v1.0.7 | v1.0 | v1.13.X+ |
 | v1.0.8 | v1.0 | v1.13.X+ |
 | v1.0.9 | v1.0 | v1.13.X+ |
+| v1.0.10 | v1.0 | v1.13.X+ |
 
 ## Driver Installation
 

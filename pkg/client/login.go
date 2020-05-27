@@ -19,7 +19,7 @@ func robin() int {
 	return r.Intn(2)
 }
 
-func (v *Volume) Login(multipath, round_robin bool) error {
+func (v *Volume) Login(multipath, round_robin bool, chapParams map[string]string) error {
 	ctxt := context.WithValue(v.ctxt, co.ReqName, "Login")
 	co.Debugf(ctxt, "Login invoked for %s.  Multipath: %t", v.Name, multipath)
 	var ips []string
@@ -35,14 +35,55 @@ func (v *Volume) Login(multipath, round_robin bool) error {
 		}
 		ips = []string{v.Ips[0]}
 	}
-	c := iscsi.Connector{
-		TargetIqn:     v.Iqn,
-		TargetPortals: ips,
-		Port:          "3260",
-		Lun:           0,
-		Multipath:     multipath,
+	var targets []iscsi.TargetInfo
+	for _, Ip := range ips {
+		targets = append(targets, iscsi.TargetInfo{v.Iqn, Ip, "3260"})
 	}
-	co.Debugf(ctxt, "ISCSI Connector: %#v", c)
+
+	secrets := iscsi.Secrets{}
+	c := iscsi.Connector{}
+
+	c.Targets = targets
+	c.Lun = 0
+	c.Multipath = multipath
+	c.RetryCount = 3
+
+	if len(chapParams) != 0 {
+		secrets.SecretsType = "chap"
+		if value, exists := chapParams["node.session.auth.username"]; exists {
+			secrets.UserName = value
+		}
+		if value, exists := chapParams["node.session.auth.password"]; exists {
+			secrets.Password = value
+		}
+		if value, exists := chapParams["node.session.auth.username_in"]; exists {
+			secrets.UserNameIn = value
+		}
+		if value, exists := chapParams["node.session.auth.password_in"]; exists {
+			secrets.PasswordIn = value
+		}
+		c.AuthType = "chap"
+		c.SessionSecrets = secrets
+		c.DoCHAPDiscovery = true
+	} else {
+		c.DoDiscovery = true
+	}
+
+	iscsi_conn := c
+	if secrets.UserName != "" {
+		iscsi_conn.SessionSecrets.UserName = "***stripped***"
+	}
+	if secrets.Password != "" {
+		iscsi_conn.SessionSecrets.Password = "***stripped***"
+	}
+	if secrets.UserNameIn != "" {
+		iscsi_conn.SessionSecrets.UserNameIn = "***stripped***"
+	}
+	if secrets.PasswordIn != "" {
+		iscsi_conn.SessionSecrets.PasswordIn = "***stripped***"
+	}
+
+	co.Debugf(ctxt, "ISCSI Connector: %#v", iscsi_conn)
 	path, err := iscsi.Connect(c)
 	if err != nil {
 		co.Error(ctxt, err)
