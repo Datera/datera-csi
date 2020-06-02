@@ -229,7 +229,7 @@ func (r *DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, erro
 	return v, nil
 }
 
-func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, chap_params map[string]string) (*Volume, error) {
+func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, chapParams map[string]string) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateVolume")
 	co.Debugf(ctxt, "CreateVolume invoked for %s, volOpts: %#v", name, volOpts)
 	var ai dsdk.AppInstancesCreateRequest
@@ -333,33 +333,27 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, cha
 			Volumes: []*dsdk.Volume{vol},
 		}
 
-		if _, exists := chap_params["node.session.auth.username_in"]; exists {
-			si = &dsdk.StorageInstance{
-				Name: "storage-1",
-				IpPool: &dsdk.AccessNetworkIpPool{
-					Path: fmt.Sprintf("/access_network_ip_pools/%s", volOpts.IpPool),
-				},
-				Auth: &dsdk.Auth{
-					Type: "mchap",
-					InitiatorUserName: chap_params["node.session.auth.username_in"],
-					InitiatorPassword: chap_params["node.session.auth.password_in"],
-					TargetUserName: chap_params["node.session.auth.username"],
-					TargetPassword: chap_params["node.session.auth.password"],
-				},
-				Volumes: []*dsdk.Volume{vol},
+		// Add CHAP credentials to the Storage Instance struct
+		si.Auth = &dsdk.Auth{Type: "none"}
+
+		if usernameIn, exists := chapParams["node.session.auth.username_in"]; exists {
+			si.Auth.Type = "mchap"
+			si.Auth.InitiatorUserName = usernameIn
+			if passwordIn, exists := chapParams["node.session.auth.password_in"]; exists {
+				si.Auth.InitiatorPassword = passwordIn
+			} else {
+				co.Errorf(ctxt, "Mutual CHAP password not provided.")
 			}
-		} else if _, exists := chap_params["node.session.auth.username"]; exists {
-			si = &dsdk.StorageInstance{
-				Name: "storage-1",
-				IpPool: &dsdk.AccessNetworkIpPool{
-					Path: fmt.Sprintf("/access_network_ip_pools/%s", volOpts.IpPool),
-				},
-				Auth: &dsdk.Auth{
-					Type: "chap",
-					TargetUserName: chap_params["node.session.auth.username"],
-					TargetPassword: chap_params["node.session.auth.password"],
-				},
-				Volumes: []*dsdk.Volume{vol},
+		}
+		if username, exists := chapParams["node.session.auth.username"]; exists {
+			if si.Auth.Type == "none" {
+				si.Auth.Type = "chap"
+			}
+			si.Auth.TargetUserName = username
+			if password, exists := chapParams["node.session.auth.password"]; exists {
+				si.Auth.TargetPassword = password
+			} else {
+				co.Errorf(ctxt, "CHAP password not provided.")
 			}
 		}
 
