@@ -12,6 +12,7 @@
   * [ 4.2. Create a Volume ](#create-a-volume)
   * [ 4.3. Create an Application using the Volume](#create-an-application-using-the-volume)
   * [ 4.4. Creating and using Volume Snapshots ](#creating-and-using-volume-snapshots)
+  * [ 4.5. More examples ](#more-examples)
 - [ 5. Collecting Logs ](#collecting-logs)
 - [ 6. Odd Case Environment Variables ](#odd-case-environment-variables)
 - [ 7. Note on K8S setup through Rancher ](#note-on-k8s-setup-through-rancher)
@@ -39,6 +40,7 @@ The Datera CSI Volume Plugin uses Datera storage backend as distributed data sto
 | v1.0.7 | v1.0 | v1.13.X+ |
 | v1.0.8 | v1.0 | v1.13.X+ |
 | v1.0.9 | v1.0 | v1.13.X+ |
+| v1.0.10 | v1.0 | v1.13.X+ |
 
 ## Driver Installation
 
@@ -140,7 +142,7 @@ $ kubectl create -f secrets.yaml
 Now install the CSI driver like above, but using the "secrets" yaml:
 
 ```bash
-$ kubectl create -f csi-datera-secrets-v1.0.4.yaml
+$ kubectl create -f csi-datera-secrets-v1.0.10.yaml
 ```
 
 The only difference between the "secrets" yaml and the regular yaml is the
@@ -154,7 +156,7 @@ $ kubectl create -f csi-datera-v1.0.x.yaml
 For example:
 
 ```bash
-# kubectl create -f csi-datera-secrets-1.0.9.yaml
+# kubectl create -f csi-datera-secrets-1.0.10.yaml
 storageclass.storage.k8s.io/dat-block-storage created
 serviceaccount/csi-datera-controller-sa created
 clusterrole.rbac.authorization.k8s.io/csi-datera-provisioner-role created
@@ -365,6 +367,10 @@ spec:
       storage: 100Gi
 ```
 
+### More Examples
+
+For other examples, such as resizing volumes, adding CHAP support, overriding Datera templates, using PVCs for deployment, etc., please check the 'deploy/examples' folder.
+
 ## Collecting Logs
 
 You can collect logs from the entire Datera CSI plugin via the ``csi_log_collect.sh`` script in the ``datera-csi/assets`` folder. Basic log collection is very simple.  Run the script with no arguments on the Kubernetes master node.
@@ -399,10 +405,10 @@ In Rancher setup, the kubelet is run inside a container and hence may not have a
 
 ## Driver upgrades and downgrades
 
-Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.9 to v1.0.8 can be done as follows:
+Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.10 to v1.0.9 can be done as follows:
 
 ```bash
-# kubectl delete -f csi-datera-1.0.9.yaml
-# kubectl create -f csi-datera-1.0.8.yaml
+# kubectl delete -f csi-datera-1.0.10.yaml
+# kubectl create -f csi-datera-1.0.9.yaml
 ```
 

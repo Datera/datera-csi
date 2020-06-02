@@ -16,6 +16,10 @@ import (
 )
 
 func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+
+	chapParams := map[string]string{}
+	chapParams = co.StripSecretsAndGetChapParams(req)
+
 	ctxt, ip, clean := d.InitFunc(ctx, "node", "NodeStageVolume", *req)
 	defer clean()
 	if ip {
@@ -71,7 +75,7 @@ func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRe
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	// Login to target
-	if err = vol.Login(!d.env.DisableMultipath, (*md)["round_robin"] == "true"); err != nil {
+	if err = vol.Login(!d.env.DisableMultipath, (*md)["round_robin"] == "true", chapParams); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	(*md)["device_path"] = vol.DevicePath

@@ -229,7 +229,7 @@ func (r *DateraClient) GetVolume(name string, qos, metadata bool) (*Volume, erro
 	return v, nil
 }
 
-func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*Volume, error) {
+func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, chapParams map[string]string) (*Volume, error) {
 	ctxt := context.WithValue(r.ctxt, co.ReqName, "CreateVolume")
 	co.Debugf(ctxt, "CreateVolume invoked for %s, volOpts: %#v", name, volOpts)
 	var ai dsdk.AppInstancesCreateRequest
@@ -323,6 +323,8 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 				},
 			}
 		}
+
+		// Fill the Storage Instance struct
 		si := &dsdk.StorageInstance{
 			Name: "storage-1",
 			IpPool: &dsdk.AccessNetworkIpPool{
@@ -330,6 +332,32 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 			},
 			Volumes: []*dsdk.Volume{vol},
 		}
+
+		// Add CHAP credentials to the Storage Instance struct
+		si.Auth = &dsdk.Auth{Type: "none"}
+
+		if usernameIn, exists := chapParams["node.session.auth.username_in"]; exists {
+			si.Auth.Type = "mchap"
+			si.Auth.InitiatorUserName = usernameIn
+			if passwordIn, exists := chapParams["node.session.auth.password_in"]; exists {
+				si.Auth.InitiatorPassword = passwordIn
+			} else {
+				co.Errorf(ctxt, "Mutual CHAP password not provided.")
+			}
+		}
+		if username, exists := chapParams["node.session.auth.username"]; exists {
+			if si.Auth.Type == "none" {
+				si.Auth.Type = "chap"
+			}
+			si.Auth.TargetUserName = username
+			if password, exists := chapParams["node.session.auth.password"]; exists {
+				si.Auth.TargetPassword = password
+			} else {
+				co.Errorf(ctxt, "CHAP password not provided.")
+			}
+		}
+
+		// Fill the AppInstancesCreateRequest struct
 		ai = dsdk.AppInstancesCreateRequest{
 			Ctxt:             ctxt,
 			Name:             name,
@@ -337,6 +365,8 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool) (*V
 			StorageInstances: []*dsdk.StorageInstance{si},
 		}
 	}
+
+	// Create the App Instance
 	newAi, apierr, err := r.sdk.AppInstances.Create(&ai)
 	if err != nil {
 		co.Error(ctxt, err)
