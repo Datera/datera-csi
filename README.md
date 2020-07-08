@@ -200,10 +200,10 @@ metadata:
   namespace: kube-system
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-provisioner: io.datera.csi.dsp
+provisioner: dsp.csi.daterainc.io
 parameters:
   replica_count: "3"
-  total_iops_max "1000"
+  total_iops_max: "1000"
 ```
 
 Here are a list of supported parameters for the plugin:
