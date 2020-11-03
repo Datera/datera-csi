@@ -150,6 +150,8 @@ use of secrets for the "username" and "password" fields.
 
 ### Install Datera CSI driver
 
+The driver install manifest file is available under deploy/kubernetes/release/1.0 directory. Pick up the latest version. Run the following command to install Datera CSI driver.
+
 ```bash
 $ kubectl create -f csi-datera-v1.0.x.yaml
 ```
