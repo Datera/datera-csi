@@ -59,6 +59,9 @@ rules:
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch", "create", "update", "patch"]
@@ -183,9 +186,8 @@ spec:
       containers:
         - name: csi-provisioner
           imagePullPolicy: Always
-          image: quay.io/k8scsi/csi-provisioner:v1.0.1
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.0.2
           args:
-            - "--provisioner=dsp.csi.daterainc.io"
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
           env:
@@ -196,7 +198,7 @@ spec:
               mountPath: /csi/
         - name: csi-attacher
           imagePullPolicy: Always
-          image: quay.io/k8scsi/csi-attacher:v1.0.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.0.0
           args:
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
@@ -208,7 +210,7 @@ spec:
               mountPath: /csi/
         - name: csi-resizer
           imagePullPolicy: Always
-          image: quay.io/k8scsi/csi-resizer:v0.2.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.0.0
           args:
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
@@ -220,7 +222,7 @@ spec:
               mountPath: /csi/
         - name: csi-snapshotter
           imagePullPolicy: Always
-          image: quay.io/k8scsi/csi-snapshotter:v1.0.1
+          image: k8s.gcr.io/sig-storage/csi-snapshotter:v3.0.0
           args:
             - "--csi-address=$(DAT_SOCKET)"
             - "--v=5"
@@ -232,7 +234,7 @@ spec:
               mountPath: /csi/
         - name: dat-csi-plugin-controller
           imagePullPolicy: Always
-          image: dateraiodev/dat-csi-plugin:v1.0.10
+          image: dateraiodev/dat-csi-plugin:v1.0.10.p1
           command: [ "/bin/sh", "-c", "/bin/dat-csi-plugin 2>&1 | tee /var/log/driver.log" ]
           env:
             - name: DAT_TYPE
@@ -269,7 +271,7 @@ spec:
           volumeMounts:
           - name: socket-dir
             mountPath: /csi
-          image: quay.io/k8scsi/livenessprobe:v1.1.0
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.1.0
           args:
           - --csi-address=$(DAT_SOCKET)
           env:
@@ -329,7 +331,7 @@ spec:
       containers:
         - name: node-driver-registrar
           imagePullPolicy: Always
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.0.1
           args:
             - "--v=5"
             - "--csi-address=$(DAT_SOCKET)"
@@ -359,7 +361,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: dateraiodev/dat-csi-plugin:v1.0.10
+          image: dateraiodev/dat-csi-plugin:v1.0.10.p1
           # The sleep is to allow the iscsid sidecar to start Running iscsiadm
           # -m session initializes /etc/iscsi/initiatorname.iscsi in this
           # container
@@ -406,7 +408,7 @@ spec:
           volumeMounts:
           - name: socket-dir
             mountPath: /csi
-          image: quay.io/k8scsi/livenessprobe:v1.1.0
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.1.0
           args:
           - --csi-address=$(DAT_SOCKET)
           - --health-port=9809
@@ -421,7 +423,7 @@ spec:
         - name: iscsi-socket
           hostPath:
             path: /var/datera/csi-iscsi.sock
-            type: FileOrCreate
+            type: Socket
         - name: devices
           hostPath:
             path: /dev
