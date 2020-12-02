@@ -42,7 +42,7 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 		params["placement_mode"] = "hybrid"
 	}
 	if _, ok := params["placement_policy"]; !ok {
-		params["placement_policy"] = "hybrid"
+		params["placement_policy"] = "default"
 	}
 	if _, ok := params["round_robin"]; !ok {
 		params["round_robin"] = "false"
@@ -92,6 +92,7 @@ func parseVolParams(ctxt context.Context, params map[string]string) (*dc.VolOpts
 	}
 	vo.BandwidthPerGb = int(val)
 	vo.PlacementMode = params["placement_mode"]
+        vo.PlacementPolicy = params["placement_policy"]
 	b, err := strconv.ParseBool(params["round_robin"])
 	if err != nil {
 		return nil, err

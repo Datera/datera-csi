@@ -283,13 +283,20 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, cha
 	} else {
 		// Vanilla Volume Create
 		var vol *dsdk.Volume
-		if yes, err := co.DatVersionGte(r.vendorVersion, "3.3.0.0"); err != nil && yes {
+                DateraVersion, err := r.VendorVersion()
+                if err != nil {
+                        co.Error(ctxt, err)
+                        return nil, err
+                }
+                co.Debugf(ctxt, "Datera is running SW version: %s", DateraVersion)
+		if yes, err := co.DatVersionGte(DateraVersion, "3.3.0.0"); err == nil && yes {
+                        co.Debugf(ctxt, "Volume create for Datera OS version >= 3.3")
 			vol = &dsdk.Volume{
 				Name:          "volume-1",
 				Size:          int(volOpts.Size),
 				PlacementMode: volOpts.PlacementMode,
 				PlacementPolicy: &dsdk.PlacementPolicy{
-					Path: volOpts.PlacementPolicy,
+					Path: "/placement_policies/" + volOpts.PlacementPolicy,
 				},
 				ReplicaCount: int(volOpts.Replica),
 				PerformancePolicy: &dsdk.PerformancePolicy{
@@ -306,8 +313,6 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, cha
 			return nil, err
 		} else {
 			co.Debugf(ctxt, "Volume create for Datera OS version < 3.3")
-			co.Debugf(ctxt, "Performance policy Total Iops Max: %v", volOpts.TotalIopsMax)
-			co.Debugf(ctxt, "Performance policy Path : %s", volOpts.PlacementPolicy)
 			vol = &dsdk.Volume{
 				Name:          "volume-1",
 				Size:          int(volOpts.Size),

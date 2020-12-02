@@ -41,6 +41,7 @@ The Datera CSI Volume Plugin uses Datera storage backend as distributed data sto
 | v1.0.8 | v1.0 | v1.13.X+ |
 | v1.0.9 | v1.0 | v1.13.X+ |
 | v1.0.10 | v1.0 | v1.13.X+ |
+| v1.0.11 | v1.0 | v1.13.X+ |
 
 ## Driver Installation
 
@@ -213,7 +214,8 @@ Here are a list of supported parameters for the plugin:
 Name                   |     Default
 ----------------       |     ------------
 ``replica_count``      |     ``3``
-``placement_mode``     |     ``hybrid``
+``placement_mode``     |     ``hybrid``   (Use this for Datera OS versions < 3.3)  
+``placement_policy``   |     ``default``  (Use this for Datera OS versions >= 3.3)
 ``ip_pool``            |     ``default``
 ``template``           |     ``""``
 ``round_robin``        |     ``false``
@@ -229,7 +231,11 @@ Name                   |     Default
 ``fs_args``            |     ``-E lazy_itable_init=0,lazy_journal_init=0,nodiscard -F``
 ``delete_on_unmount``  |     ``false``
 
-NOTE: All parameters MUST be strings in the yaml file otherwise the kubectl parser will fail.  If in doubt, enclose each in double quotes ("")
+NOTE: 
+
+1. All parameters MUST be strings in the yaml file, otherwise the kubectl parser will fail.  If in doubt, enclose each in double quotes ("")
+
+2. The 'placement_mode' will continue to work in Datera OS versions >= 3.3, however the 'placement_policy' takes precedence.  
 
 ```bash
 $ kubectl create -f csi-storageclass.yaml
