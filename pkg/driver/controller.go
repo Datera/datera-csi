@@ -329,12 +329,32 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		co.Error(ctxt, err)
 	}
 
+        // Update the ContentSource in the volume response
+        SnapSrc := &csi.VolumeContentSource_SnapshotSource{}
+        VolSrc := &csi.VolumeContentSource_VolumeSource{}
+        ContentSrc := &csi.VolumeContentSource{}
+
+        if params.CloneSrc != "" {
+                VolSrc.VolumeId = params.CloneSrc
+                ContentSrc.Type = &csi.VolumeContentSource_Volume{}
+                ContentSrc.GetType().(*csi.VolumeContentSource_Volume).Volume = VolSrc
+        } else if params.CloneVolSrc != "" {
+                VolSrc.VolumeId = params.CloneVolSrc
+                ContentSrc.Type = &csi.VolumeContentSource_Volume{}
+                ContentSrc.GetType().(*csi.VolumeContentSource_Volume).Volume = VolSrc
+        } else if params.CloneSnapSrc != "" {
+                SnapSrc.SnapshotId = params.CloneSnapSrc
+                ContentSrc.Type = &csi.VolumeContentSource_Snapshot{}
+                ContentSrc.GetType().(*csi.VolumeContentSource_Snapshot).Snapshot = SnapSrc
+        }
+
+        // Return volume response back to K8S
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			CapacityBytes: int64(size * units.GiB),
 			VolumeId:      vol.Name,
 			VolumeContext: map[string]string{},
-			ContentSource: nil,
+			ContentSource: ContentSrc,
 		},
 	}, nil
 }

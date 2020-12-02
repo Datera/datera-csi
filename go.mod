@@ -10,12 +10,12 @@ require (
 	github.com/Shopify/sarama v1.21.0 // indirect
 	github.com/aclements/go-gg v0.0.0-20170323211221-abd1f791f5ee // indirect
 	github.com/aclements/go-moremath v0.0.0-20180329182055-b1aff36309c7 // indirect
-	github.com/container-storage-interface/spec v1.2.0
+	github.com/container-storage-interface/spec v1.3.0
 	github.com/coreos/go-systemd v0.0.0-20190318101727-c7c1946145b6 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/gliderlabs/ssh v0.1.3 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
-	github.com/golang/protobuf v1.4.0
+	github.com/golang/protobuf v1.4.1
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/pprof v0.0.0-20190309163659-77426154d546 // indirect
 	github.com/google/uuid v1.1.1
@@ -29,6 +29,8 @@ require (
 	github.com/kubernetes-csi/csi-test v1.1.1
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
+	//google.golang.org/protobuf v1.25.0 // indirect
+	github.com/protocolbuffers/protobuf v3.14.0+incompatible
 	github.com/rogpeppe/fastuuid v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
