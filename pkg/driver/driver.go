@@ -260,6 +260,10 @@ func (d *Driver) Stop() {
 func (d *Driver) Heartbeater() {
 	ctxt := co.WithCtxt(context.Background(), "Heartbeat", "")
 	co.Infof(ctxt, "Starting heartbeat service. Interval: %d", d.env.Heartbeat)
+        if d.env.Type == NodeType || d.env.Type == NodeIdentityType || d.env.Type == AllType {
+                d.healthy = true
+                return
+        }
 	t := d.env.Heartbeat
 	for {
 		if mf, err := d.dc.HealthCheck(ctxt); err != nil {
