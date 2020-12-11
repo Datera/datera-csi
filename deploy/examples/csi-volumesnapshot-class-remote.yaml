@@ -1,0 +1,9 @@
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshotClass
+metadata:
+  name: csi-snap-class
+driver: dsp.csi.daterainc.io
+deletionPolicy: Retain
+parameters:
+  remote_provider: c7f97223-81d9-44fe-ae7b-7c27daf6c288
+  type: local_and_remote

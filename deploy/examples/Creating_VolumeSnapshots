@@ -1,0 +1,57 @@
+Note: The Volume Snapshot feature was promoted to Beta in Kubernetes v1.17.
+As part of this promotion, the CSI external-snapshotter controller is split
+into the following 2 controllers:
+
+1) CSI external-snapshotter
+2) snapshot-controller
+
+The CSI external-snapshotter sidecar will be installed along with Datera CSI driver.
+However, the snapshot-controller needs to be setup separately as described below.
+
+
+(1) Update the CSI driver to v1.0.11 or higher using the attached yaml. This includes
+    an expanded RBAC role for the csi-datera-provisioner-sa Service account.
+    The CSI external-snapshotter container is created inside csi-provisioner pod.
+
+    # kubectl apply -f csi-datera-secrets-1.0.11.yaml
+
+
+(2) Next, install the CRDs given below. These files are also stored under /deploy/kubernetes/crds/ folder.
+ 
+    # kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/release-3.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+    # kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/release-3.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+    # kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/release-3.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+
+
+(3) Create the Snapshot controller. These two files are stored under /deploy/examples/ folder.
+
+    # kubectl apply -f rbac-snapshot-controller.yaml
+    # kubectl apply -f setup-snapshot-controller.yaml
+
+    # kubectl get pods -n kube-system | grep snapshot
+    snapshot-controller-0                      1/1     Running   0          13h
+    #
+
+
+(4) Create VolumeSnapshotClass. The file is under /deploy/examples/ folder.
+
+    # kubectl create -f csi-volumesnapshot-class.yaml
+
+
+(5) Create VolumeSnapshot. The file is under /deploy/examples/ folder.
+
+    # kubectl create -f csi-volumesnapshot.yaml
+
+    # kubectl get volumesnapshot
+    NAME           READYTOUSE   SOURCEPVC   SOURCESNAPSHOTCONTENT   RESTORESIZE   SNAPSHOTCLASS    SNAPSHOTCONTENT                                    CREATIONTIME   AGE
+    csi-pvc-snap   true         csi-pvc                             1Gi           csi-snap-class   snapcontent-99eb2938-f2b7-442a-90a2-906fcc45a404   7s             7s
+    #
+
+
+(6) This will create a VolumeSnapshotContent which holds reference to the snapshot created on Datera.
+
+    # kubectl get volumesnapshotcontent
+    NAME                                               READYTOUSE   RESTORESIZE   DELETIONPOLICY   DRIVER                 VOLUMESNAPSHOTCLASS   VOLUMESNAPSHOT   AGE
+    snapcontent-99eb2938-f2b7-442a-90a2-906fcc45a404   true         1073741824    Retain           dsp.csi.daterainc.io   csi-snap-class        csi-pvc-snap     11s
+    # 
+

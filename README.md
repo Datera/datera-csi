@@ -42,6 +42,7 @@ The Datera CSI Volume Plugin uses Datera storage backend as distributed data sto
 | v1.0.9 | v1.0 | v1.13.X+ |
 | v1.0.10 | v1.0 | v1.13.X+ |
 | v1.0.11 | v1.0 | v1.13.X+ |
+| v1.0.12 | v1.0 | v1.13.X+ |
 
 ## Driver Installation
 
@@ -209,6 +210,10 @@ parameters:
   total_iops_max: "1000"
 ```
 
+```bash
+$ kubectl create -f csi-storageclass.yaml
+```
+
 Here are a list of supported parameters for the plugin:
 
 Name                   |     Default
@@ -237,8 +242,13 @@ NOTE:
 
 2. The 'placement_mode' will continue to work in Datera OS versions >= 3.3, however the 'placement_policy' takes precedence.  
 
+3. StorageClass parameters cannot be patched using "kubectl apply -f <>" command. Any changes needs a delete and re-create of the StorageClass with modified parameters. You can also use "kubectl replace .." which does delete and replace of StorageClass. Only subsequent PVCs/PVs which references this modified StorageClass will see the change. There is no impact to existing PVCs/PVs. 
+
 ```bash
-$ kubectl create -f csi-storageclass.yaml
+$ kubectl replace -f csi-storageclass.yaml --force
+storageclass.storage.k8s.io "csi-storageclass" deleted
+storageclass.storage.k8s.io/csi-storageclass replaced
+$
 ```
 
 ### Create a Volume
@@ -296,11 +306,12 @@ $ kubectl create -f csi-app.yaml
 To create a volume snapshot in kubernetes you can use the following VolumeSnapshotClass and VolumeSnapshot as an example. Save the following as csi-snap-class.yaml.
 
 ```yaml
-apiVersion: snapshot.storage.k8s.io/v1alpha1
+apiVersion: snapshot.storage.k8s.io/v1beta1
 kind: VolumeSnapshotClass
 metadata:
-  name: dat-snap-class
-snapshotter: dsp.csi.daterainc.io
+  name: csi-snap-class
+driver: dsp.csi.daterainc.io
+deletionPolicy: Retain
 parameters:
 ```
 
@@ -312,14 +323,15 @@ Name                        |     Default
 ``remote_provider_uuid``    |     ``""``
 ``type``                    |     ``local`` options: local, remote, local\_and\_remote
 
-Example VolumeSnapshotClass yaml file with parameters:
+Example VolumeSnapshotClass yaml file with parameters (when saving snapshot to a remote provider):
 
 ```yaml
-apiVersion: snapshot.storage.k8s.io/v1alpha1
+apiVersion: snapshot.storage.k8s.io/v1beta1
 kind: VolumeSnapshotClass
 metadata:
-  name: dat-snap-class
-snapshotter: dsp.csi.daterainc.io
+  name: csi-snap-class
+driver: dsp.csi.daterainc.io
+deletionPolicy: Retain
 parameters:
   remote_provider: c7f97223-81d9-44fe-ae7b-7c27daf6c288
   type: local_and_remote
@@ -332,27 +344,31 @@ $ kubectl create -f csi-snap-class.yaml
 Create and save the following as csi-snap.yaml.
 
 ```yaml
-apiVersion: snapshot.storage.k8s.io/v1alpha1
+apiVersion: snapshot.storage.k8s.io/v1beta1
 kind: VolumeSnapshot
 metadata:
-  name: csi-snap
+  name: csi-pvc-snap
 spec:
-  snapshotClassName: dat-snap-class
+  volumeSnapshotClassName: csi-snap-class
   source:
-    name: csi-pvc
-    kind: PersistentVolumeClaim
+    persistentVolumeClaimName: csi-pvc
 ```
 
 ```bash
-$ kubectl create -f snap.yaml
+$ kubectl create -f csi-snap.yaml
 ```
 
 We can now view the snapshot using kubectl command.
 
 ```bash
-$ kubectl get volumesnapshots
-NAME       AGE
-csi-snap   2m
+# kubectl get volumesnapshot
+NAME           READYTOUSE   SOURCEPVC   SOURCESNAPSHOTCONTENT   RESTORESIZE   SNAPSHOTCLASS    SNAPSHOTCONTENT                                    CREATIONTIME   AGE
+csi-pvc-snap   true         csi-pvc                             1Gi           csi-snap-class   snapcontent-4ea69ee8-444c-4106-b000-0b7c91cb847f   22m            22m
+# 
+# kubectl get volumesnapshotcontents
+NAME                                               READYTOUSE   RESTORESIZE   DELETIONPOLICY   DRIVER                 VOLUMESNAPSHOTCLASS   VOLUMESNAPSHOT   AGE
+snapcontent-4ea69ee8-444c-4106-b000-0b7c91cb847f   true         1073741824    Retain           dsp.csi.daterainc.io   csi-snap-class        csi-pvc-snap     22m
+#
 ```
 
 Now we can use this snapshot to create a new PVC.
@@ -361,18 +377,19 @@ Now we can use this snapshot to create a new PVC.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: csi-restore-from-snapshot
+  name: csi-pvc-restore
+  namespace: default
 spec:
   storageClassName: dat-block-storage
   dataSource:
-    name: csi-snap
+    name: csi-pvc-snap
     kind: VolumeSnapshot
     apiGroup: snapshot.storage.k8s.io
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Gi
+      storage: 1Gi
 ```
 
 ### More Examples
@@ -381,11 +398,13 @@ For other examples, such as resizing volumes, adding CHAP support, overriding Da
 
 ## Collecting Logs
 
-You can collect logs from the entire Datera CSI plugin via the ``csi_log_collect.sh`` script in the ``datera-csi/assets`` folder. Basic log collection is very simple.  Run the script with no arguments on the Kubernetes master node.
+You can collect logs from the entire Datera CSI plugin via the ``csi_log_collect.sh`` script in the ``datera-csi/assets`` folder. Basic log collection is very simple.  To collect logs from all the master and worker nodes, run the script with no arguments on the Kubernetes master node. To collect logs from a specific worker node or master node, specify the '-p <regex>' option after the script. See examples below.
 
 ```bash
 $ chmod +x ./assets/csi_log_collect.sh
 $ ./assets/csi_log_collect.sh
+$ ./assets/csi_log_collect.sh -p csi-provisioner
+$ ./assets/csi_log_collect.sh -p csi-node
 ```
 
 ## Odd Case Environment Variables
@@ -416,7 +435,7 @@ In Rancher setup, the kubelet is run inside a container and hence may not have a
 Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.10 to v1.0.9 can be done as follows:
 
 ```bash
-# kubectl delete -f csi-datera-1.0.10.yaml
-# kubectl create -f csi-datera-1.0.9.yaml
+# kubectl delete -f csi-datera-1.0.11.yaml
+# kubectl create -f csi-datera-1.0.10.yaml
 ```
 
