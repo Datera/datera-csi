@@ -1,0 +1,63 @@
+Restoring from a Snapshot involves following steps:
+
+(1) Identify the volumesnapshot that needs to be restored.
+    Specify the name of the volumesnapshot as 'dataSource' 
+    in a new PVC and create it as shown below.
+
+    # File: csi-pvc-from-snapshot.yaml
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: csi-pvc-restore
+      namespace: default
+    spec:
+      storageClassName: dat-block-storage
+      dataSource:
+        name: csi-pvc-snap
+        kind: VolumeSnapshot
+        apiGroup: snapshot.storage.k8s.io
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+
+    In this case, the 'csi-pvc-restore' is the new PVC that
+    is being restored from 'csi-pvc-snap' volumesnapshot.
+
+    # kubectl create -f csi-pvc-from-snapshot.yaml
+
+    # kubectl get pvc | egrep "NAME|csi-pvc-restore"
+    NAME                   STATUS        VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS          AGE
+    csi-pvc-restore        Bound         pvc-6b2e2b68-489c-4702-84f1-2c835f396f9d   1Gi        RWO            dat-block-storage     15m
+    #
+
+
+(2) Create the Application Pod referencing this new PVC.
+
+    # File: csi-app-from-snapshot.yaml
+
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: my-csi-app-restore
+    spec:
+      containers:
+        - name: my-app-image
+          image: alpine
+          volumeMounts:
+          - mountPath: "/data"
+            name: my-app-volume
+          command: [ "sleep", "1000000" ]
+      volumes:
+        - name: my-app-volume
+          persistentVolumeClaim:
+            claimName: csi-pvc-restore
+    
+    # kubectl create -f csi-app-from-snapshot.yaml
+
+    # kubectl get pod | egrep "NAME|csi-app-restore"
+    NAME                   READY   STATUS    RESTARTS   AGE
+    my-csi-app-restore     1/1     Running   0          23s
+    #

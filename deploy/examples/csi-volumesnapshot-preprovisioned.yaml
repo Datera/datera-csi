@@ -1,0 +1,7 @@
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshot
+metadata:
+  name: csi-pvc-snap
+spec:
+  source:
+    volumeSnapshotContentName: snapcontent-99eb2938-f2b7-442a-90a2-906fcc45a404
