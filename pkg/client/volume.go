@@ -381,7 +381,14 @@ func (r *DateraClient) CreateVolume(name string, volOpts *VolOpts, qos bool, cha
 		return nil, co.ErrTranslator(apierr)
 	}
 	v, err := aiToClientVol(ctxt, newAi, false, false, r)
-	v.Formatted = false
+
+        // DO NOT FORMAT when volume is created from another source
+        if volOpts.CloneSrc != "" && volOpts.CloneVolSrc != "" && volOpts.CloneSnapSrc != "" {
+                v.Formatted = true
+        } else {
+	        v.Formatted = false
+        }
+
 	if qos && volOpts.Template == "" {
 		if err = v.SetPerformancePolicy(volOpts); err != nil {
 			return nil, err
