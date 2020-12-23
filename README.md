@@ -14,9 +14,10 @@
   * [ 4.4. Creating and using Volume Snapshots ](#creating-and-using-volume-snapshots)
   * [ 4.5. More examples ](#more-examples)
 - [ 5. Collecting Logs ](#collecting-logs)
-- [ 6. Odd Case Environment Variables ](#odd-case-environment-variables)
-- [ 7. Note on K8S setup through Rancher ](#note-on-k8s-setup-through-rancher)
-- [ 8. Driver upgrades and downgrades ](#driver-upgrades-and-downgrades)
+- [ 6. Troubleshooting CSI driver installation ](#troubleshooting-csi-driver-installation)
+- [ 7. Odd Case Environment Variables ](#odd-case-environment-variables)
+- [ 8. Note on K8S setup through Rancher ](#note-on-k8s-setup-through-rancher)
+- [ 9. Driver upgrades and downgrades ](#driver-upgrades-and-downgrades)
   
   
 
@@ -113,7 +114,7 @@ There are 2 locations for each value within the yaml that should be modified. On
 
 ### Optional Secrets
 
-Instead of putting the username/password in the yaml file directly instead you can use the kubernetes secrets capabilities.
+Instead of putting the username/password in the yaml file directly, you can use the kubernetes secrets capabilities.
 
 NOTE: This must be done before installing the CSI driver.
 
@@ -394,7 +395,7 @@ spec:
 
 ### More Examples
 
-For other examples, such as resizing volumes, adding CHAP support, overriding Datera templates, using PVCs for deployment, etc., please check the 'deploy/examples' folder.
+For other examples, such as creating/managing volume snapshots, resizing volumes, adding CHAP support, overriding Datera templates, using PVCs for deployment, etc., please check the 'deploy/examples' folder.
 
 ## Collecting Logs
 
@@ -405,6 +406,36 @@ $ chmod +x ./assets/csi_log_collect.sh
 $ ./assets/csi_log_collect.sh
 $ ./assets/csi_log_collect.sh -p csi-provisioner
 $ ./assets/csi_log_collect.sh -p csi-node
+```
+
+If driver pods have already crashed or terminated, use the -p or --previous option to get the logs.
+
+```bash
+$ kubectl --v=8 logs <podname> -n <namespace> --previous
+```
+
+## Troubleshooting CSI driver installation
+
+If the CSI driver pod(s) is/are not coming up to a stable Running state, check the following:
+
+```bash
+(1) Are there any health check failures?
+    $ kubectl describe pod csi-provisioner-0 -n kube-system
+    $ kubectl describe pod csi-node-xxxxx -n kube-system
+
+(2) Check whether Kubernetes killed the Pod for lack of resources or excess usage of cpu/mem resources. The kubelet on the kubernetes host node will provide additional insights into failure.
+    $ kubectl get pod csi-provisioner-0 -n kube-system -o wide
+    $ kubectl get pod csi-node-xxxxx -n kube-system -o wide
+    $ ssh user@k8s-hostnode
+    $ grep <podname> /var/log/containers  
+    $ sudo journalctl -u kubelet -n 100 --no-pager
+
+(3) Is the iscsid deamon running on all the worker nodes? 
+    $ systemctl --all | grep iscsi-recv
+
+(4) Check for kubernetes events.
+    $ kubectl get events -n kube-system --sort-by='.metadata.creationTimestamp'
+    $ kubectl get events -n kube-system --sort-by='.lastTimestamp'
 ```
 
 ## Odd Case Environment Variables
@@ -432,7 +463,7 @@ In Rancher setup, the kubelet is run inside a container and hence may not have a
 
 ## Driver upgrades and downgrades
 
-Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.10 to v1.0.9 can be done as follows:
+Driver upgrades and downgrades can be done by running a 'kubectl delete -f <csi_driver_yaml_used_to_create>' followed by 'kubectl delete -f <csi_driver_yaml_for_new_version>'. For example, a downgrade from v1.0.11 to v1.0.10 can be done as follows:
 
 ```bash
 # kubectl delete -f csi-datera-1.0.11.yaml
