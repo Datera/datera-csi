@@ -15,8 +15,13 @@ github.com/Azure/go-autorest/tracing v0.5.0/go.mod h1:r/s2XiOKccPW3HrqB+W0TQzfbt
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DataDog/zstd v1.3.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
+github.com/Datera/go-sdk v1.1.16 h1:e6o/KdovvsaNB5DlQkfukToXI/dSxvwMmcHuXJVXWoU=
 github.com/Datera/go-sdk v1.1.17-0.20201113070811-77eb49252654 h1:TY4mreZIFq1RdPp/b0FWRLbo79ubtg/gyWVkqw1BFL0=
 github.com/Datera/go-sdk v1.1.17-0.20201113070811-77eb49252654/go.mod h1:J3M7XeBRbZw6ZKKTA6jSNo+XIthvTz5NXnrbibHq7xM=
+github.com/Datera/go-sdk v1.1.17-0.20210126222041-b9b03d308cdf h1:heTX8ghuoiWG0IgFC2U/dCgNtkHUNyUYpKtPQg3jMh4=
+github.com/Datera/go-sdk v1.1.17-0.20210126222041-b9b03d308cdf/go.mod h1:J3M7XeBRbZw6ZKKTA6jSNo+XIthvTz5NXnrbibHq7xM=
+github.com/Datera/go-sdk v1.1.17-0.20210126225259-d2ff2e68333b h1:xy5Fkvq0FcYnRUZ28jhh8dJh0EVmIK1sVPtAl7eY8rg=
+github.com/Datera/go-sdk v1.1.17-0.20210126225259-d2ff2e68333b/go.mod h1:J3M7XeBRbZw6ZKKTA6jSNo+XIthvTz5NXnrbibHq7xM=
 github.com/Datera/go-udc v1.1.0/go.mod h1:Z1tRCsem0RwlAJ6W0nnBda74SngfTQAE88xAU8mOpJ8=
 github.com/Datera/go-udc v1.1.1 h1:DWWnp+0PpD30Lqez7oS4wA60g9J71/RCwfSfiCPA0OA=
 github.com/Datera/go-udc v1.1.1/go.mod h1:Q3d9dF5+bUj/OaTaljAApZTpwVf4nmrpGXAJIN9NC0M=

@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	git.apache.org/thrift.git v0.12.0 // indirect
-	github.com/Datera/go-sdk v1.1.17-0.20201113070811-77eb49252654
+	github.com/Datera/go-sdk v1.1.17-0.20210126225259-d2ff2e68333b
 	github.com/Datera/go-udc v1.1.1
 	github.com/GoogleCloudPlatform/cloudsql-proxy v0.0.0-20190312192040-a2a65ffce834 // indirect
 	github.com/Shopify/sarama v1.21.0 // indirect
