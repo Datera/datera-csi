@@ -42,9 +42,9 @@ function check_external_dependencies()
 function collect_pod_logs()
 {
     local pod=$1
-    local containers=$(${KUBECTL} logs --namespace kube-system ${pod} 2>&1 | grep -Po "\[\K.*(?=\])")
+    local containers=$(${KUBECTL} logs --namespace "${NAMESPACE}" ${pod} 2>&1 | grep -Po "\[\K.*(?=\])")
     mkdir -p ${SAVE_DIR}/${pod}/
-    ${KUBECTL} describe pods --namespace kube-system ${pod} > ${SAVE_DIR}/${pod}/describe.txt
+    ${KUBECTL} describe pods --namespace "${NAMESPACE}" ${pod} > ${SAVE_DIR}/${pod}/describe.txt
     for c in ${containers}
     do
         if [[ ${OPT_I} == true ]] && [[ ${c} == *"liveness"* ]]
@@ -53,8 +53,8 @@ function collect_pod_logs()
             continue
         fi
         echo "[INFO] Saving container logfile: ${c}"
-        ${KUBECTL} logs --namespace kube-system ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}.txt
-        ${KUBECTL} logs --namespace kube-system --previous=true ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}-previous.txt 2>/dev/null
+        ${KUBECTL} logs --namespace "${NAMESPACE}" ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}.txt
+        ${KUBECTL} logs --namespace "${NAMESPACE}" --previous=true ${pod} ${c} > ${SAVE_DIR}/${pod}/${c}-previous.txt 2>/dev/null
     done
 }
 
