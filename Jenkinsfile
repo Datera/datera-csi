@@ -15,17 +15,21 @@ pipeline {
     stages {
         stage('Cloning Git') {
             steps {
+		// The GIT_BRANCH is specified as a Pipeline param
+		// The credentialsId is the GitHub credential and is created for this Pipeline
 		checkout([$class: 'GitSCM', 
 			  branches: [[name: "*/${params.GIT_BRANCH}"]],
     			  userRemoteConfigs: [[credentialsId: "0e54e78d-bbf1-4a6c-840c-be582abefd62", 
 					       url: 'https://github.com/Datera/datera-csi.git']]])
             }
         }
-        stage('Build and Push CSI driver image') {
+        stage('Build CSI driver image') {
             steps {
+		// Run from under this directory only
                 dir("cmd/dat-csi-plugin") {
                		sh "pwd"
                         script {
+				// Set environment variables for Go build of CSI image
                                 env.VERSION = sh(script:'cat ../../VERSION', returnStdout: true).trim()
 				env.GITHASH = sh(script:'git describe --match nEvErMatch --always --abbrev=10', returnStdout: true).trim()
 				env.NAME = 'dat-csi-plugin'
@@ -36,19 +40,34 @@ pipeline {
 				sh 'printenv'
     				sh "go build -tags 'osusergo netgo static_build' -o ${env.NAME} -ldflags \"${env.csi_driver_version_flag} ${env.gosdk_version_flag} ${env.hash_flag}\" github.com/Datera/datera-csi/cmd/dat-csi-plugin"
 				sh "ls -l dat-csi-plugin"
-				docker.withRegistry('https://registry.hub.docker.com', "dockerhub_creds") {
-					def csiDriverImage = docker.build("dateraiodev/dat-csi-plugin:${env.VERSION}", "-f Dockerfile ../..")
-					sh "sudo docker images | grep ${env.VERSION}"
-					csiDriverImage.push("${env.VERSION}")
-					sh "sudo docker images --digests | grep ${env.VERSION}"
-				}
 			}
 		}
 	    }
 	}
-        stage('Pull CSI image and Run Regression') {
-            agent { label 'csi_node' }
+        stage('Push CSI driver image to DockerHub') {
             steps {
+		// Run from under this directory only
+                dir("cmd/dat-csi-plugin") {
+                        script {
+				// The "dockerhub_creds" are Global Credentials created for this Pipeline 
+                                docker.withRegistry('https://registry.hub.docker.com', "dockerhub_creds") {
+                                        def csiDriverImage = docker.build("dateraiodev/dat-csi-plugin:${env.VERSION}", "-f Dockerfile ../..")
+                                        sh "sudo docker images | grep ${env.VERSION}"
+                                        csiDriverImage.push("${env.VERSION}")
+                                        sh "sudo docker images --digests | grep ${env.VERSION}"
+                                }
+                        }
+                }
+            }
+        }
+        stage('Deploy to Dev cluster and run Regression') {
+	    // Run this Deploy stage from the specified Agent node
+	    // which has access to Datera cluster and regression scripts
+            agent { 
+		label 'csi_node' 
+	    }
+            steps {
+		// Pass parameters to the next job Downstream
 		build (job: "${params.REGRESSION_JOB}", parameters: [
         		[
             			$class: 'StringParameterValue',
