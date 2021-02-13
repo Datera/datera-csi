@@ -15,18 +15,24 @@ pipeline {
     stages {
         stage('Cloning Git') {
             steps {
-		// The GIT_BRANCH is specified as a Pipeline param
-		// The credentialsId is the GitHub credential and is created for this Pipeline
-		checkout([$class: 'GitSCM', 
-			  branches: [[name: "*/${params.GIT_BRANCH}"]],
-    			  userRemoteConfigs: [[credentialsId: "0e54e78d-bbf1-4a6c-840c-be582abefd62", 
-					       url: 'https://github.com/Datera/datera-csi.git']]])
+		sh 'rm -rf datera-csi'
+		checkout([	$class: 'GitSCM', 
+				branches: [[name: "${params.GIT_BRANCH}"]], 
+				doGenerateSubmoduleConfigurations: false, 
+				extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'datera-csi'], 
+					     [$class: 'CleanCheckout', deleteUntrackedNestedRepositories: true], 
+					     [$class: 'CleanBeforeCheckout', deleteUntrackedNestedRepositories: true], 
+					     [$class: 'WipeWorkspace']], 
+				submoduleCfg: [], 
+				userRemoteConfigs: [[credentialsId: '0e54e78d-bbf1-4a6c-840c-be582abefd62', 
+						     url: 'https://github.com/Datera/datera-csi.git']]
+			])
             }
         }
         stage('Build CSI driver image') {
             steps {
 		// Run from under this directory only
-                dir("cmd/dat-csi-plugin") {
+                dir("datera-csi/cmd/dat-csi-plugin") {
                		sh "pwd"
                         script {
 				// Set environment variables for Go build of CSI image
@@ -38,7 +44,7 @@ pipeline {
 				env.gosdk_version_flag = "github.com/Datera/datera-csi/pkg/driver.SdkVersion=${env.GOSDK_V}"
 				env.hash_flag = "github.com/Datera/datera-csi/pkg/driver.Githash=${env.GITHASH}"
 				sh 'printenv'
-    				sh "go build -tags 'osusergo netgo static_build' -o ${env.NAME} -ldflags \"${env.csi_driver_version_flag} ${env.gosdk_version_flag} ${env.hash_flag}\" github.com/Datera/datera-csi/cmd/dat-csi-plugin"
+				sh "go build -tags 'osusergo netgo static_build' -o ${env.NAME} -ldflags \"-X '${env.csi_driver_version_flag}' -X '${env.gosdk_version_flag}' -X '${env.hash_flag}'\" github.com/Datera/datera-csi/cmd/dat-csi-plugin"
 				sh "ls -l dat-csi-plugin"
 			}
 		}
@@ -47,7 +53,7 @@ pipeline {
         stage('Push CSI driver image to DockerHub') {
             steps {
 		// Run from under this directory only
-                dir("cmd/dat-csi-plugin") {
+                dir("datera-csi/cmd/dat-csi-plugin") {
                         script {
 				// The "dockerhub_creds" are Global Credentials created for this Pipeline 
                                 docker.withRegistry('https://registry.hub.docker.com', "dockerhub_creds") {

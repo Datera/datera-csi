@@ -212,6 +212,25 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 	(*md)["bind_mount"] = strings.Join(vol.BindMountPaths.List(), ",")
+        // Add Pod level details into App Instance metadata, if they exist in this call
+        if  req.VolumeContext != nil {
+                podName := req.VolumeContext["csi.storage.k8s.io/pod.name"]
+                podNamespace := req.VolumeContext["csi.storage.k8s.io/pod.namespace"]
+                podUid := req.VolumeContext["csi.storage.k8s.io/pod.uid"]
+                svcAcct := req.VolumeContext["csi.storage.k8s.io/serviceAccount.name"]
+                if podName != "" {
+                        (*md)["pod_name"] = podName
+                }
+                if podNamespace != "" {
+                        (*md)["pod_namespace"] = podNamespace
+                }
+                if podUid != "" {
+                        (*md)["pod_uid"] = podUid
+                }
+                if svcAcct != "" {
+                        (*md)["k8s_service_account"] = svcAcct
+                }
+        }
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
@@ -242,6 +261,12 @@ func (d *Driver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublish
 	for _, bm := range strings.Split((*md)["bind_mount"], ",") {
 		vol.BindMountPaths.Delete(bm)
 	}
+	// Remove Pod level details from the Volume Metadata
+        (*md)["pod_name"] = ""
+        (*md)["pod_namespace"] = ""
+        (*md)["pod_uid"] = ""
+        (*md)["k8s_service_account"] = ""
+
 	if _, err = vol.SetMetadata(md); err != nil {
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
